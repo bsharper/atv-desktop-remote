@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>ATV Remote</title>
+    <link rel="stylesheet" href="css/loaders.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/pure-min.css">
+    <link rel="stylesheet" href="css/all.css">
+    <link rel="stylesheet" id="s2style-sheet" href="css/select2-inverted.css">
+    <script>
+        window.jQuery = window.$ = require('jquery');
+        require('./js/select2.min.js')($)
+    </script>
+    <script src="js/tippy-headless.umd.min.js"></script>
+    <script src="js/loader.js"></script>
+
+
+    <body>
+        <div class="pure-g">
+            <div class="pure-u-1-2">
+                <div id="alwaysOnTopWrapper">
+                    <span class="keyTextAlt">H - hide window</span>
+                    <!-- <input id="alwaysOnTopCheck" type="checkbox" href="javascript:;">
+                    <label for="alwaysOnTopCheck">Always on-top</label> -->
+                </div>
+            </div>
+            <div class="pure-u-1-2">
+                <div id="exitLinkWrapper">
+                    <button id="exitLink" class="simpleButton"><span class="keyText">Quit</span><span class="keyTextAlt">Q (3x)</span></button>
+                </div>
+            </div>
+            <div class="pure-u-1-1">
+                <div class="center">
+                    <h2 class="topText">ATV Remote</h2>
+                </div>
+            </div>
+        </div>
+        <div id="main">
+
+            <div id="addNewElements">
+                <div id="loader">
+                    <div id="pairingLoader"></div>
+                </div>
+                <div id="pairingElements">
+
+                    <div id="results">
+                        <label for="atv_picker">Select a device below to start pairing. You only need to do this once.</label>
+                        <select id="atv_picker"></select>
+                    </div>
+                    <div id="pairCodeElements">
+                        <label for="pairCode">Enter the 4 digit code here. This will be displayed on the device you selected.
+                        <input id="pairCode" type="text" style="text-align: center" maxlength="4" />
+                    </label><button onclick="javascript:;" class="simpleButton" id="pairButton">Submit</button>
+                    </div>
+                    <button id="cancelPairing" class="simpleButton"><span class="keyText">Cancel</span><span class="keyTextAlt">Cancel</span></button>
+                </div>
+            </div>
+            <div id="runningElements">
+
+                <div id="keyMapElement"></div>
+                <div class="pure-g">
+                    <div class="pure-u-1 pure-u-md-1-4"></div>
+                    <div class="pure-u-1 pure-u-md-1-2">
+                        <table class="directionTable">
+                            <tr>
+                                <td>
+
+                                </td>
+                                <td>
+                                    <div data-key="Up" data-tippy-content="Up arrow" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-up"></i></span><span class='keyTextAlt'>Up</span></div>
+                                </td>
+                                <td>
+
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div data-key="Left" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-left"></i></span><span class='keyTextAlt'>Left</span></div>
+                                </td>
+                                <td>
+                                    <div data-key="Select" class="selectArrow directionArrows directionCircle"><span class='keyText'>Select</span><span class='keyTextAlt'>Enter</span></div>
+                                </td>
+                                <td>
+                                    <div data-key="Right" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-right"></i></span><span class='keyTextAlt'>Right</span></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div data-key="Previous" class="directionCircle"><span class='keyText'>Prev</span><span class='keyTextAlt'>P, [</span></div>
+                                </td>
+                                <td>
+                                    <div data-key="Down" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-down"></i></span><span class='keyTextAlt'>Down</span></div>
+                                </td>
+                                <td>
+                                    <div data-key="Next" class="directionCircle"><span class='keyText'>Next</span><span class='keyTextAlt'>N, ]</span></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+
+                                </td>
+                                <td>
+
+                                </td>
+                                <td>
+
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="directionCircle" data-key="Pause"><span class='keyText'>Play</span><span class='keyTextAlt'>Space</span></div>
+                                </td>
+                                <td>
+                                    <div class="directionCircle menuButton" data-key="Menu"><span class='keyText'>Menu</span><span class='keyTextAlt'>Esc, <i class="fas fa-backspace"></i></span></div>
+                                </td>
+                                <td>
+                                    <div class="directionCircle" data-key="Tv"><span class='keyText'>TV</span><span class='keyTextAlt'>T, L</span></div>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </div>
+                    <div class="pure-u-1 pure-u-md-1-4"></div>
+
+                    <div class="pure-u-1-12"></div>
+                    <div class="pure-u-5-6"></div>
+                    <div class="pure-u-1-12"></div>
+                </div>
+
+            </div>
+
+
+            <div id="cmdWrapper">
+                <div id="cmdFade"></div>
+            </div>
+
+        </div>
+        <footer>
+            <div class="footer center">
+                <h2 id="statusText"></h2>
+                <div id="atvDropdownContainer"></div>
+            </div>
+        </footer>
+    </body>
+    <script src="web_remote.js"></script>
+
+</html>

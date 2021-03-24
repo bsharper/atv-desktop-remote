@@ -1,0 +1,645 @@
+var atv_credentials = false;
+var lodash = _ = require('./js/lodash.min');
+var pairDevice = "";
+var electron = require('electron')
+var remote = electron.remote;
+var dialog = remote.dialog;
+var ipcRenderer = electron.ipcRenderer;
+var mb = remote.getGlobal('MB');
+const { Menu, MenuItem } = remote
+var atv = electron.remote.require('./remote').atv;
+var NowPlayingInfo = atv.NowPlayingInfo;
+var nativeTheme = electron.remote.nativeTheme;
+var dialog = electron.remote.dialog;
+var device = false;
+var qPresses = 0;
+var playstate = false;
+var previousKeys = []
+
+
+const keymap = {
+    'ArrowLeft': 'Left',
+    'ArrowRight': 'Right',
+    'ArrowUp': 'Up',
+    'ArrowDown': 'Down',
+    'Enter': 'Select',
+    'Space': (latv) => {
+        var v = latv.playing;
+        latv.playing = !latv.playing;
+        if (v) {
+            return 'Pause';
+        } else {
+            return 'Play'
+        }
+    },
+    'Backspace': 'Menu',
+    'Escape': 'Menu',
+    'Next': 'Next',
+    'Previous': 'Previous',
+    'n': 'Next',
+    'p': 'Previous',
+    ']': 'Next',
+    '[': 'Previous',
+    't': 'Tv',
+    'l': 'LongTv'
+}
+
+const niceButtons = {
+    "TV": "Tv"
+}
+
+const keyDesc = {
+    'Space': 'Pause/Play',
+    'ArrowLeft': 'left arrow',
+    'ArrowRight': 'right arrow',
+    'ArrowUp': 'up arrow',
+    'ArrowDown': 'down arrow',
+    'Backspace': 'Menu',
+    'Escape': 'Menu',
+    't': 'TV Button',
+    'l': 'Long-press TV Button'
+}
+
+ipcRenderer.on('shortcutWin', (event) => {
+    toggleAltText(true);
+})
+
+ipcRenderer.on('scanDevicesResult', (event, ks) => {
+    createDropdown(ks);
+})
+
+ipcRenderer.on('pairCredentials', (event, arg) => {
+    saveRemote(pairDevice, arg);
+    localStorage.setItem('atvcreds', JSON.stringify(getCreds(pairDevice)));
+    connectToATV();
+})
+
+ipcRenderer.on('gotStartPair', () => {
+    console.log('gotStartPair');
+})
+
+ipcRenderer.on('mainLog', (event, txt) => {
+    console.log('[ main ] %s', txt.substring(0, txt.length - 1));
+})
+
+ipcRenderer.on('powerResume', (event, arg) => {
+    connectToATV();
+})
+
+window.addEventListener('blur', e => {
+    toggleAltText(true);
+})
+
+window.addEventListener('beforeunload', async e => {
+    delete e['returnValue'];
+    try {
+        ipcRenderer.invoke('debug', 'beforeunload called')
+        if (!device) return;
+        device.removeAllListeners('message');
+        ipcRenderer.invoke('debug', 'messages unregistered')
+        await device.closeConnection()
+        ipcRenderer.invoke('debug', 'connection closed')
+    } catch (err) {
+        console.log(err);
+        //ipcRenderer.invoke('debug', `Error: ${err}`)
+    }
+});
+
+function toggleAltText(tf) {
+    if (tf) {
+        $(".keyText").show();
+        $(".keyTextAlt").hide();
+    } else {
+        $(".keyText").hide();
+        $(".keyTextAlt").show();
+    }
+}
+
+window.addEventListener('keyup', e => {
+    if (e.key == 'Alt') {
+        toggleAltText(true);
+    }
+});
+
+window.addEventListener('keydown', e => {
+    var key = e.key;
+    if (key == ' ') key = 'Space';
+    var mods = ["Control", "Shift", "Alt", "Option", "Fn", "Hyper", "OS", "Super", "Meta", "Win"].filter(mod => { return e.getModifierState(mod) })
+    if (mods.length > 0 && mods[0] == 'Alt') {
+        toggleAltText(false);
+    }
+    if (mods.length > 0) return
+
+    if (key == 'q') {
+        qPresses++;
+        console.log(`qPresses ${qPresses}`)
+        if (qPresses == 3) ipcRenderer.invoke('quit');
+    } else {
+        qPresses = 0;
+    }
+    if (key == 'h') {
+        ipcRenderer.invoke('hideWindow');
+    }
+    if (!isConnected()) {
+        if ($("#pairCode").is(':focus') && key == 'Enter') {
+            submitCode();
+        }
+        return;
+    }
+    if ($("#cancelPairing").is(":visible")) return;
+    Object.keys(keymap).forEach(k => {
+        if (key == k) {
+            sendCommand(k);
+            e.preventDefault();
+            return false;
+        }
+    })
+})
+
+function createDropdown(ks) {
+    $("#loader").hide();
+    var txt = "";
+    $("#statusText").hide();
+    //setStatus("Select a device");
+    $("#pairingLoader").html("")
+    $("#pairingElements").show();
+    var ar = ks.map(el => {
+        return {
+            id: el,
+            text: el
+        }
+    })
+    ar.unshift({
+        id: '',
+        text: 'Select a device to pair'
+    })
+    $("#atv_picker").select2({
+        data: ar,
+        placeholder: 'Select a device to pair',
+        dropdownAutoWidth: true,
+        minimumResultsForSearch: Infinity
+    }).on('change', () => {
+        var vl = $("#atv_picker").val();
+        if (vl) {
+            pairDevice = vl;
+            startPairing(vl);
+        }
+    })
+}
+
+function createATVDropdown() {
+    $("#statusText").hide();
+    var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
+    var ks = Object.keys(creds);
+    var atvc = localStorage.getItem('atvcreds')
+    var selindex = 0;
+    ks.forEach((k, i) => {
+        var v = creds[k]
+        if (JSON.stringify(v) == atvc) selindex = i;
+    })
+
+    var ar = ks.map((el, i) => {
+        var obj = {
+            id: el,
+            text: el
+        }
+        if (i == selindex) {
+            obj.selected = true;
+        }
+        return obj;
+    })
+    ar.unshift({
+        id: 'addnew',
+        text: 'Pair another remote'
+    })
+    var txt = "";
+    txt += `<span class='ctText'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>`
+    txt += `<select id="remoteDropdown"></select>`
+    $("#atvDropdownContainer").html(txt);
+    $("#remoteDropdown").select2({
+        data: ar,
+        placeholder: 'Select a remote',
+        dropdownAutoWidth: true,
+        minimumResultsForSearch: Infinity
+    })
+
+
+
+    $("#remoteDropdown").on('change', () => {
+        var vl = $("#remoteDropdown").val();
+        if (vl) {
+            if (vl == 'addnew') {
+                startScan();
+                return;
+            } else {
+                pairDevice = vl;
+                localStorage.setItem('atvcreds', JSON.stringify(getCreds(vl)));
+                connectToATV();
+            }
+        }
+    })
+}
+
+function showAndFade(text) {
+    $("#cmdFade").html(text)
+    $("#cmdFade").stop(true).fadeOut(0).css({ "visibility": "visible" }).fadeIn(200).delay(800).fadeOut(function() {
+        $(this).css({ "display": "flex", "visibility": "hidden" });
+    });
+}
+
+function _updatePlayState() {
+    var label = (device.playing ? "Pause" : "Play")
+    console.log(`Update play state: ${label}`)
+    $(`[data-key="Pause"] .keyText`).html(label);
+}
+
+var updatePlayState = lodash.debounce(_updatePlayState, 300);
+
+async function sendCommand(k) {
+    if (k == 'Pause') k = 'Space';
+    var rcmd = keymap[k];
+    if (Object.values(keymap).indexOf(k) > -1) rcmd = k;
+    if (typeof(rcmd) === 'function') rcmd = rcmd(device);
+
+    var classkey = rcmd;
+    if (classkey == 'Play') classkey = 'Pause';
+    var el = $(`[data-key="${classkey}"]`)
+    if (el.length > 0) {
+        el.addClass('invert');
+        setTimeout(() => {
+            el.removeClass('invert');
+        }, 500);
+    }
+    if (k == 'Space') {
+        var pptxt = rcmd == "Pause" ? "Play" : "Pause";
+        el.find('.keyText').html(pptxt);
+    }
+    console.log(`Keydown: ${k}, sending command: ${rcmd}`)
+    previousKeys.push(rcmd);
+    if (previousKeys.length > 10) previousKeys.shift()
+    var desc = rcmd;
+    if (desc == 'Tv') desc = 'TV'
+    if (desc == 'LongTv') desc = 'TV long press'
+    showAndFade(desc);
+    try {
+        await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
+    } catch (err) {
+        console.log('Error sending key', err);
+        _connectToATV();
+    }
+}
+
+function isConnected() {
+    return !!(device && device.connection)
+}
+
+async function askQuestion(msg) {
+    let options = {
+        buttons: ["No", "Yes"],
+        message: msg
+    }
+    var response = await dialog.showMessageBox(options)
+    console.log(response)
+    return response.response == 1
+}
+
+
+function startPairing(dev) {
+    //setStatus("Enter the pairing code");
+    $("#results").hide();
+    $("#pairButton").on('click', () => {
+        submitCode();
+        return false;
+    });
+    $("#pairCodeElements").show();
+    ipcRenderer.invoke('startPair', dev);
+}
+
+function submitCode() {
+    var code = $("#pairCode").val();
+    ipcRenderer.invoke('finishPair', code);
+}
+
+function showKeyMap() {
+    $(".directionTable").show();
+    var tvTimer;
+    $("[data-key]").off('mousedown mouseup mouseleave');
+    $("[data-key]").on('mousedown', function(e) {
+        var key = $(this).data('key');
+        if (key == "Tv") {
+            tvTimer = setTimeout(() => {
+                tvTimer = false;
+                sendCommand('LongTv')
+            }, 1000);
+        } else {
+            sendCommand(key);
+        }
+    });
+    $(`[data-key="Tv"]`).on('mouseup mouseleave', function(e) {
+        var key = $(this).data('key');
+        if (!tvTimer) return; // already send long press
+        clearTimeout(tvTimer);
+        tvTimer = false;
+        if (e.type == 'mouseleave') return;
+        sendCommand('Tv');
+    });
+}
+
+// function runMainJS(js, handleErrors) {
+//     return new Promise((resolve, reject) => {
+//         function herr(event, err) {
+//             console.log(`runMainJS error response`, err)
+//             wrapup({ result: null, error: err });
+//         }
+
+//         function hresult(event, r) {
+//             console.log('runMainJS result', r)
+//             wrapup({ result: r, error: null });
+//         }
+
+//         function wrapup(r) {
+//             ipcRenderer.off('runJSresult', hresult);
+//             ipcRenderer.off('runJSerror', herr);
+//             if (handleErrors) return resolve(r);
+//             else reject(r.err);
+//         }
+
+//         ipcRenderer.once('runJSresult', hresult)
+//         ipcRenderer.once('runJSerror', herr);
+//         try {
+//             ipcRenderer.invoke('runJS', js);
+//         } catch (err) {
+//             reject(err);
+//         }
+//     })
+
+// }
+
+var connecting = false;
+
+function handleMessage(msg) {
+    device.lastMessages.push(JSON.parse(JSON.stringify(msg)));
+    while (device.lastMessages.length > 100) device.lastMessages.shift();
+    if (msg.type == 4) {
+        try {
+            device.bundleIdentifier = msg.payload.playerPath.client.bundleIdentifier;
+            var els = device.bundleIdentifier.split('.')
+            var nm = els[els.length - 1];
+        } catch (err) {}
+        if (msg && msg.payload && msg.payload.playbackState) {
+            device.playing = msg.payload.playbackState == 1;
+            device.lastMessage = JSON.parse(JSON.stringify(msg))
+            _updatePlayState();
+        }
+        if (msg && msg.payload && msg.payload.playbackQueue && msg.payload.playbackQueue.contentItems && msg.payload.playbackQueue.contentItems.length > 0) {
+            console.log('got playback item');
+            device.playbackItem = JSON.parse(JSON.stringify(msg.payload.playbackQueue.contentItems[0]));
+        }
+    }
+}
+
+async function connectToATV() {
+    if (connecting) return;
+    connecting = true;
+    setStatus("Connecting to ATV...");
+    $("#runningElements").show();
+    atv_credentials = JSON.parse(localStorage.getItem('atvcreds'))
+    credentialsString = atv_credentials.credentialsString
+    let credentials = atv.parseCredentials(credentialsString);
+    try {
+        let devices = await atv.scan(credentials.uniqueIdentifier)
+        device = devices[0];
+        await device.openConnection(credentials);
+    } catch (err) {
+        connecting = false;
+        console.log(`Error connecting`, err)
+        setStatus(`Error connecting to ${pairDevice}`)
+        setTimeout(() => {
+            startScan();
+        }, 1000);
+    }
+    device.playing = false
+    device.lastMessage = {}
+    device.lastMessages = []
+    device.bundleIdentifier = "";
+    device.playbackItem = {};
+    device.removeAllListeners('message');
+    device.off('message', handleMessage);
+    device.on('message', handleMessage);
+    device.Key = atv.AppleTV.Key;
+    $("#pairingElements").hide();
+    var deviceID = `${device.name} (${device.address})`
+    localStorage.setItem('currentDeviceID', deviceID);
+    saveRemote(deviceID, atv_credentials)
+    createATVDropdown();
+    showKeyMap();
+    connecting = false;
+}
+
+var _connectToATV = lodash.debounce(connectToATV, 300);
+
+function saveRemote(name, creds) {
+    var ar = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
+    if (typeof creds == 'string') creds = JSON.parse(creds);
+    ar[name] = creds;
+    localStorage.setItem('remote_credentials', JSON.stringify(ar));
+}
+
+function setStatus(txt) {
+    $("#statusText").html(txt).show();
+}
+
+function startScan() {
+    $("#loader").fadeIn();
+    $("#addNewElements").show();
+    $("#runningElements").hide();
+    mb.showWindow();
+    $("#atvDropdownContainer").html("");
+    setStatus("Please wait, scanning...")
+    $("#pairingLoader").html(getLoader());
+    ipcRenderer.invoke('scanDevices');
+}
+
+
+function handleDarkMode() {
+    var uimode = localStorage.getItem("uimode") || "systemmode";
+    var alwaysUseDarkMode = (uimode == "darkmode");
+    var neverUseDarkMode = (uimode == "lightmode");
+
+    if ((nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode)) {
+        $("body").addClass("darkMode");
+        $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
+    } else {
+        $("body").removeClass("darkMode");
+        $("#s2style-sheet").attr('href', 'css/select2.min.css')
+    }
+}
+
+function _getCreds(nm) {
+    var creds = JSON.parse(localStorage.getItem('remote_credentials') || "{}")
+    var ks = Object.keys(creds);
+    if (ks.length === 0) {
+        return {};
+    }
+    if (typeof nm == 'undefined' && ks.length > 0) {
+        return creds[ks[0]]
+    } else {
+        if (Object.keys(creds).indexOf(nm) > -1) {
+            localStorage.setItem('currentDeviceID', nm)
+            return creds[nm];
+        }
+    }
+}
+
+function getCreds(nm) {
+    var r = _getCreds(nm);
+    while (typeof r == 'string') r = JSON.parse(r);
+    return r;
+}
+
+function setAlwaysOnTop(tf) {
+    console.log(`setAlwaysOnTop(${tf})`)
+    ipcRenderer.invoke('alwaysOnTop', String(tf));
+}
+
+function alwaysOnTopToggle() {
+    var cd = $("#alwaysOnTopCheck").prop('checked')
+    localStorage.setItem('alwaysOnTopChecked', cd);
+    setAlwaysOnTop(cd);
+}
+
+var lastMenuEvent;
+
+function subMenuClick(event) {
+    var mode = event.id;
+    localStorage.setItem('uimode', mode);
+    lastMenuEvent = event;
+    event.menu.items.forEach(el => {
+        el.checked = el.id == mode;
+    })
+    setTimeout(() => {
+        handleDarkMode();
+    }, 1);
+
+    console.log(event);
+}
+
+async function confirmExit() {
+    // var r = await dialog.showMessageBox({ type: 'question', message: 'Really quit?', buttons: ["No", "Yes"], defaultId: 1 })
+    // if (r.response) {
+    //     electron.remote.app.quit();
+    // }
+    // I decided against this, this behavior annoys me in other programs
+    electron.remote.app.quit();
+}
+
+function handleContextMenu() {
+    let tray = mb.tray
+    var mode = localStorage.getItem('uimode') || 'systemmode';
+
+    const subMenu = Menu.buildFromTemplate([
+        { type: 'checkbox', id: 'systemmode', click: subMenuClick, label: 'Follow system settings', checked: (mode == "systemmode") },
+        { type: 'checkbox', id: 'darkmode', click: subMenuClick, label: 'Dark mode', checked: (mode == "darkmode") },
+        { type: 'checkbox', id: 'lightmode', click: subMenuClick, label: 'Light mode', checked: (mode == "lightmode") }
+    ])
+
+    var topChecked = JSON.parse(localStorage.getItem('alwaysOnTopChecked') || "false")
+    const contextMenu = Menu.buildFromTemplate([
+        { type: 'checkbox', label: 'Always on-top', click: toggleAlwaysOnTop, checked: topChecked },
+        { type: 'separator' },
+        { role: 'about', label: 'About' },
+        { type: 'separator' },
+        { label: 'Appearance', submenu: subMenu, click: subMenuClick },
+        { type: 'separator' },
+        { label: 'Quit', click: confirmExit }
+    ]);
+    tray.removeAllListeners('right-click');
+    tray.on('right-click', () => {
+        mb.tray.popUpContextMenu(contextMenu);
+    })
+}
+
+function toggleAlwaysOnTop(event) {
+    localStorage.setItem('alwaysOnTopChecked', String(event.checked));
+    ipcRenderer.invoke('alwaysOnTop', String(event.checked));
+}
+
+async function helpMessage() {
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
+}
+
+
+async function init() {
+    handleDarkMode();
+    handleContextMenu();
+    $("#exitLink").on('click', () => {
+        $("#exitLink").blur();
+        setTimeout(() => {
+                confirmExit();
+            }, 1)
+            //electron.remote.app.quit();
+    })
+    $("#cancelPairing").on('click', () => {
+        console.log('cancelling');
+        window.location.reload();
+    })
+
+    var checked = JSON.parse(localStorage.getItem('alwaysOnTopChecked') || "false")
+    if (checked) setAlwaysOnTop(checked);
+
+    var creds;
+    try {
+        creds = JSON.parse(localStorage.getItem('atvcreds') || "false")
+    } catch {
+        creds = getCreds();
+        if (creds) localStorage.setItem('atvcreds', JSON.stringify(creds));
+    }
+    if (localStorage.getItem('firstRun') != 'false') {
+        localStorage.setItem('firstRun', 'false');
+        await helpMessage();
+        mb.showWindow();
+    }
+
+    if (creds) {
+        atv_credentials = creds;
+
+        connectToATV().then(() => {
+            console.log('Connected to ATV');
+        });
+    } else {
+        startScan();
+    }
+}
+
+function hideAppMenus() {
+    try {
+        remote.app.dock.hide();
+    } catch (err) {}
+}
+
+async function checkEnv() {
+    var isProd = await ipcRenderer.invoke('isProduction')
+
+    if (isProd) return hideAppMenus();
+
+    // dev environment
+    remote.getCurrentWindow().webContents.toggleDevTools({ mode: 'detach' });
+
+}
+
+function themeUpdated() {
+    console.log('theme style updated');
+    handleDarkMode();
+}
+try {
+    nativeTheme.removeAllListeners();
+} catch (err) {}
+nativeTheme.on('updated', themeUpdated);
+
+
+$(function() {
+    checkEnv();
+    init().then(() => {
+        console.log('init complete');
+    })
+})

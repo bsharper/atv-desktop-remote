@@ -1,0 +1,20 @@
+{
+    "name": "atv-mac-remote",
+    "version": "0.9.5",
+    "description": "ATV Remote",
+    "productName": "ATV Remote",
+    "scripts": {
+        "start": "cd .. && npx electron app/main.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {},
+    "main": "main.js",
+    "dependencies": {
+        "bluebird": "^3.7.2",
+        "jquery": "^3.5.1",
+        "menubar": "^9.0.2",
+        "node-appletv-x": "^1.0.19"
+    }
+}

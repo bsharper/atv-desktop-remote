@@ -1,0 +1,26 @@
+{
+    "name": "atv-mac-remote",
+    "version": "0.9.5",
+    "main": "app/main.js",
+    "description": "ATV Remote",
+    "productName": "ATV Remote",
+    "build": {
+        "productName": "ATV Remote",
+        "appId": "com.electron.atvMacRemote",
+        "mac": {
+            "category": "public.app-category.utilities"
+        }
+    },
+    "scripts": {
+        "start": "electron app",
+        "postinstall": "electron-builder install-app-deps",
+        "build": "npx electron-builder -m",
+        "docker-build": "yarn add electron-builder@21.2.0 && ./electron_docker.sh 'yarn run build:win'",
+        "build:win": "yarn add electron-builder@21.2.0 && npx electron-builder -w --arm64",
+        "build-arm": "npx electron-builder -m --arm64"
+    },
+    "devDependencies": {
+        "electron": "^11.2.1",
+        "electron-builder": "22.10.4"
+    }
+}
