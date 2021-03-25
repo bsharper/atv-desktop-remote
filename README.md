@@ -3,6 +3,11 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ![What this application looks like when running in either light or dark mode](screenshot.png)
  
+ ## Download
+ 
+ I've created macOS and Windows releases available here: https://github.com/bsharper/atv-desktop-remote/releases
+ 
+ 
  ## Installation
  
  1. Run `npm install` or `yarn`
