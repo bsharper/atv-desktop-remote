@@ -4,6 +4,10 @@ const { ipcMain } = require('electron')
 const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
+
+const preloadWindow = true;
+const readyEvent = preloadWindow ? "ready" : "after-create-window";
+
 var mb;
 
 console._log = console.log;
@@ -29,7 +33,7 @@ if (!gotTheLock) {
 
 function createWindow() {
     mb = menubar({
-        preloadWindow: true,
+        preloadWindow: preloadWindow,
         showDockIcon: false,
         browserWindow: {
             width: 300,
@@ -43,7 +47,7 @@ function createWindow() {
         }
     })
     global['MB'] = mb;
-    mb.on('ready', () => {
+    mb.on(readyEvent, () => {
         win = mb.window;
 
 

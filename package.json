@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "0.9.7",
+    "version": "0.9.8",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
@@ -21,6 +21,6 @@
     },
     "devDependencies": {
         "electron": "^12.0.2",
-        "electron-builder": "^22.9.1"
+        "electron-builder": "^22.10.5"
     }
 }
