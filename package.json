@@ -20,7 +20,7 @@
         "build-arm": "npx electron-builder -m --arm64"
     },
     "devDependencies": {
-        "electron": "^12.0.2",
+        "electron": "^13.1.6",
         "electron-builder": "^22.10.5"
     }
 }
