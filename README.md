@@ -3,6 +3,9 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ![What this application looks like when running in either light or dark mode](screenshot.png)
  
+ ## IMPORTANT: tvOS 15 beta is no longer using the protocol that this application uses. If you update to tvOS 15 beta, this app will not work.
+There is promising work at using a different protocol to allow this to continue to work, but until this is implemented don't update to tvOS 15 beta if you want to use this app.
+ 
  ## Download
  
  I've created macOS and Windows releases available here: https://github.com/bsharper/atv-desktop-remote/releases
