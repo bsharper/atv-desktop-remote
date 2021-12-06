@@ -16,6 +16,23 @@ var qPresses = 0;
 var playstate = false;
 var previousKeys = []
 
+const ws_keymap = {
+    "ArrowUp": "up",
+    "ArrowDown": "down",
+    "ArrowLeft": "left",
+    "ArrowRight": "right",
+    "t": "home",
+    "l": "home_hold",
+    "Backspace": "menu",
+    "Escape": "menu",
+    "Space": "play_pause",
+    "Enter": "select",
+    "Previous": "skip_backward",
+    "Next": "skip_forward",
+    "[": "skip_backward",
+    "]": "skip_forward",
+    "g": "top_menu"
+}
 
 const keymap = {
     'ArrowLeft': 'Left',
@@ -45,7 +62,8 @@ const keymap = {
 }
 
 const niceButtons = {
-    "TV": "Tv"
+    "TV": "Tv",
+    "play/pause": "play_pause"
 }
 
 const keyDesc = {
@@ -147,13 +165,29 @@ window.addEventListener('keydown', e => {
         return;
     }
     if ($("#cancelPairing").is(":visible")) return;
-    Object.keys(keymap).forEach(k => {
+    var fnd = false;
+    Object.keys(ws_keymap).forEach(k => {
         if (key == k) {
+            fnd = true;
             sendCommand(k);
             e.preventDefault();
             return false;
         }
     })
+    console.log(`fnd: ${fnd}`)
+    if (!fnd) {
+        console.log('!!! here')
+
+        Object.keys(keymap).forEach(k => {
+            if (key == k) {
+                fnd = true;
+                sendCommand(k);
+                e.preventDefault();
+                return false;
+            }
+        })
+    }
+
 })
 
 function createDropdown(ks) {
@@ -256,9 +290,10 @@ function _updatePlayState() {
 var updatePlayState = lodash.debounce(_updatePlayState, 300);
 
 async function sendCommand(k) {
+    console.log(`sendCommand: ${k}`)
     if (k == 'Pause') k = 'Space';
-    var rcmd = keymap[k];
-    if (Object.values(keymap).indexOf(k) > -1) rcmd = k;
+    var rcmd = ws_keymap[k];
+    if (Object.values(ws_keymap).indexOf(k) > -1) rcmd = k;
     if (typeof(rcmd) === 'function') rcmd = rcmd(device);
 
     var classkey = rcmd;
@@ -278,19 +313,22 @@ async function sendCommand(k) {
     previousKeys.push(rcmd);
     if (previousKeys.length > 10) previousKeys.shift()
     var desc = rcmd;
+    if (desc == 'play_pause') desc = "play/pause"
     if (desc == 'Tv') desc = 'TV'
     if (desc == 'LongTv') desc = 'TV long press'
     showAndFade(desc);
-    try {
-        await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
-    } catch (err) {
-        console.log('Error sending key', err);
-        _connectToATV();
-    }
+    ws_sendCommand(rcmd)
+        // try {
+        //     await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
+        // } catch (err) {
+        //     console.log('Error sending key', err);
+        //     _connectToATV();
+        // }
 }
 
 function isConnected() {
-    return !!(device && device.connection)
+    return atv_connected
+        //return !!(device && device.connection)
 }
 
 async function askQuestion(msg) {
@@ -312,12 +350,14 @@ function startPairing(dev) {
         return false;
     });
     $("#pairCodeElements").show();
-    ipcRenderer.invoke('startPair', dev);
+    //ipcRenderer.invoke('startPair', dev);
+    ws_startPair(dev);
 }
 
 function submitCode() {
     var code = $("#pairCode").val();
-    ipcRenderer.invoke('finishPair', code);
+    //ipcRenderer.invoke('finishPair', code);
+    ws_finishPair(code)
 }
 
 function showKeyMap() {
@@ -404,33 +444,34 @@ async function connectToATV() {
     setStatus("Connecting to ATV...");
     $("#runningElements").show();
     atv_credentials = JSON.parse(localStorage.getItem('atvcreds'))
-    credentialsString = atv_credentials.credentialsString
-    let credentials = atv.parseCredentials(credentialsString);
-    try {
-        let devices = await atv.scan(credentials.uniqueIdentifier)
-        device = devices[0];
-        await device.openConnection(credentials);
-    } catch (err) {
-        connecting = false;
-        console.log(`Error connecting`, err)
-        setStatus(`Error connecting to ${pairDevice}`)
-        setTimeout(() => {
-            startScan();
-        }, 1000);
-    }
-    device.playing = false
-    device.lastMessage = {}
-    device.lastMessages = []
-    device.bundleIdentifier = "";
-    device.playbackItem = {};
-    device.removeAllListeners('message');
-    device.off('message', handleMessage);
-    device.on('message', handleMessage);
-    device.Key = atv.AppleTV.Key;
+
+    // try {
+    //     let devices = await atv.scan(credentials.uniqueIdentifier)
+    //     device = devices[0];
+    //     await device.openConnection(credentials);
+    // } catch (err) {
+    //     connecting = false;
+    //     console.log(`Error connecting`, err)
+    //     setStatus(`Error connecting to ${pairDevice}`)
+    //     setTimeout(() => {
+    //         startScan();
+    //     }, 1000);
+    // }
+    // device.playing = false
+    // device.lastMessage = {}
+    // device.lastMessages = []
+    // device.bundleIdentifier = "";
+    // device.playbackItem = {};
+    // device.removeAllListeners('message');
+    // device.off('message', handleMessage);
+    // device.on('message', handleMessage);
+    // device.Key = atv.AppleTV.Key;
+
     $("#pairingElements").hide();
-    var deviceID = `${device.name} (${device.address})`
-    localStorage.setItem('currentDeviceID', deviceID);
-    saveRemote(deviceID, atv_credentials)
+    //var deviceID = `${device.name} (${device.address})`
+    //localStorage.setItem('currentDeviceID', deviceID);
+    //saveRemote(deviceID, atv_credentials)
+    await ws_connect(atv_credentials);
     createATVDropdown();
     showKeyMap();
     connecting = false;
@@ -457,7 +498,8 @@ function startScan() {
     $("#atvDropdownContainer").html("");
     setStatus("Please wait, scanning...")
     $("#pairingLoader").html(getLoader());
-    ipcRenderer.invoke('scanDevices');
+    //ipcRenderer.invoke('scanDevices');
+    ws_startScan();
 }
 
 
@@ -600,12 +642,9 @@ async function init() {
         mb.showWindow();
     }
 
-    if (creds) {
+    if (creds && creds.credentials && creds.identifier) {
         atv_credentials = creds;
-
-        connectToATV().then(() => {
-            console.log('Connected to ATV');
-        });
+        connectToATV();
     } else {
         startScan();
     }
@@ -623,7 +662,7 @@ async function checkEnv() {
     if (isProd) return hideAppMenus();
 
     // dev environment
-    remote.getCurrentWindow().webContents.toggleDevTools({ mode: 'detach' });
+    //remote.getCurrentWindow().webContents.toggleDevTools({ mode: 'detach' });
 
 }
 
@@ -635,11 +674,3 @@ try {
     nativeTheme.removeAllListeners();
 } catch (err) {}
 nativeTheme.on('updated', themeUpdated);
-
-
-$(function() {
-    checkEnv();
-    init().then(() => {
-        console.log('init complete');
-    })
-})
