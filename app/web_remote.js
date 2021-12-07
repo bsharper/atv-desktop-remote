@@ -104,6 +104,10 @@ ipcRenderer.on('powerResume', (event, arg) => {
     connectToATV();
 })
 
+ipcRenderer.on('wsserver_started', () => {
+    ws_server_started();
+})
+
 window.addEventListener('blur', e => {
     toggleAltText(true);
 })

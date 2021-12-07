@@ -1,7 +1,6 @@
 const WebSocket = require('ws').WebSocket
 const EventEmitter = require('events');
 
-
 // WebSocketClient.prototype.reconnect = function(e) {
 //     console.log(`WebSocketClient: retry in ${this.autoReconnectInterval}ms`, e);
 //     this.instance.removeAllListeners();
@@ -194,9 +193,26 @@ function checkWSConnection() {
     }
 }
 
-$(function() {
+function ws_init() {
     startWebsocket();
     ws_watchdog = setInterval(() => {
         checkWSConnection()
     }, 5000);
+}
+
+function incReady() {
+    console.log('incReady');
+    readyCount++;
+    if (readyCount == 2) ws_init();
+}
+
+function ws_server_started() {
+    console.log(`wsserver started`)
+    incReady();
+}
+
+var readyCount = 0;
+
+$(function() {
+    incReady();
 });

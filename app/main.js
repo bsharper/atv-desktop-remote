@@ -4,6 +4,13 @@ const { ipcMain } = require('electron')
 const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
+const server_runner = require('./server_runner')
+server_runner.startServer();
+
+// process.on("uncaughtException", server_runner.stopServer);
+// process.on("SIGINT", server_runner.stopServer);
+// process.on("SIGTERM", server_runner.stopServer);
+global["server_runner"] = server_runner;
 
 const preloadWindow = true;
 const readyEvent = preloadWindow ? "ready" : "after-create-window";
@@ -93,23 +100,34 @@ function createWindow() {
         ipcMain.handle('isProduction', (event) => {
             return (!process.defaultApp);
         });
-        // ipcMain.handle('runJS', async(event, arg) => {
-        //     console.log(`runJS ${arg}`)
-        //     try {
-        //         var r = eval(arg);
-        //         if (r && r.then) {
-        //             var rr = r;
-        //             r = await r;
-        //             win.webContents.send('runJSresult', r);
-        //         }
-        //     } catch (err) {
-        //         win.webContents.send('runJSerror', err);
-        //     }
-        // })
+        ipcMain.handle('runJS', async(event, arg) => {
+            console.log(`runJS ${arg}`)
+            try {
+                var r = eval(arg);
+                if (r && r.then) {
+                    var rr = r;
+                    r = await r;
+                    win.webContents.send('runJSresult', r);
+                }
+            } catch (err) {
+                win.webContents.send('runJSerror', err);
+            }
+        })
 
         powerMonitor.addListener('resume', event => {
             win.webContents.send('powerResume');
         })
+
+        // if (server_runner.isServerRunning()) {
+        //     console.log(`server already running`)
+        //     win.webContents.send("wsserver_started")
+        // } else {
+        //     console.log(`server waiting for event`)
+        //     server_runner.server_events.on("started", () => {
+        //         win.webContents.send("wsserver_started")
+        //     })
+        // }
+        win.webContents.send("wsserver_started")
     })
 }
 
@@ -146,6 +164,10 @@ app.whenReady().then(() => {
         website: "https://github.com/bsharper",
         iconPath: "./images/full.png"
     });
+})
+
+app.on("before-quit", () => {
+    server_runner.stopServer();
 })
 
 app.on('window-all-closed', () => {
