@@ -1,6 +1,7 @@
 const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut } = require('electron')
 var win;
 const { ipcMain } = require('electron')
+const path = require('path');
 const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
@@ -100,6 +101,10 @@ function createWindow() {
         ipcMain.handle('isProduction', (event) => {
             return (!process.defaultApp);
         });
+        ipcMain.handle('isWSRunning', (event, arg) => {
+            console.log('isWSRunning');
+            if (server_runner.isServerRunning()) win.webContents.send('wsserver_started')
+        })
         ipcMain.handle('runJS', async(event, arg) => {
             console.log(`runJS ${arg}`)
             try {
@@ -118,16 +123,23 @@ function createWindow() {
             win.webContents.send('powerResume');
         })
 
-        // if (server_runner.isServerRunning()) {
-        //     console.log(`server already running`)
-        //     win.webContents.send("wsserver_started")
-        // } else {
-        //     console.log(`server waiting for event`)
-        //     server_runner.server_events.on("started", () => {
-        //         win.webContents.send("wsserver_started")
-        //     })
-        // }
-        win.webContents.send("wsserver_started")
+        win.on('ready-to-show', () => {
+            console.log('ready to show')
+            if (server_runner.isServerRunning()) {
+                win.webContents.send("wsserver_started")
+            }
+        })
+
+        if (server_runner.isServerRunning()) {
+            console.log(`server already running`)
+            win.webContents.send("wsserver_started")
+        } else {
+            console.log(`server waiting for event`)
+            server_runner.server_events.on("started", () => {
+                win.webContents.send("wsserver_started")
+            })
+        }
+        //win.webContents.send("wsserver_started")
     })
 }
 
@@ -144,7 +156,23 @@ function hideWindow() {
     app.hide();
 }
 
+function getWorkingPath() {
+    var rp = process.resourcesPath;
+    if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
+    if (!app.isPackaged) {
+        rp = path.resolve(`${path.dirname(process.argv[1])}/../atv_py_env`)
+    }
+    return rp
+}
+
 app.whenReady().then(() => {
+    console.log(getWorkingPath())
+    server_runner.testPythonExists().then(r => {
+        console.log(`python exists: ${r}`)
+    }).catch(err => {
+        console.log(`python does not exist: ${err}`)
+    })
+
     createWindow();
     globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
         if (mb.window.isVisible()) {

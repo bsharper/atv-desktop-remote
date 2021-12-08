@@ -227,6 +227,15 @@ aside {
     }
 }
 
+.pythonErrorHeader {
+    font-size: 1.5em;
+    color: rgb(202, 60, 60);
+}
+
+.pythonError {
+    display: none;
+}
+
 .directionTable {
     display: none;
     text-align: center;

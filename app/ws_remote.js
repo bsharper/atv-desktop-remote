@@ -139,7 +139,7 @@ function ws_startScan() {
 }
 
 function ws_sendCommand(cmd) {
-    console.log(`ws_sendCommand: ${cmd}`)
+    //console.log(`ws_sendCommand: ${cmd}`)
     sendMessage("key", cmd)
 }
 
@@ -201,7 +201,7 @@ function ws_init() {
 }
 
 function incReady() {
-    console.log('incReady');
+    //console.log('incReady');
     readyCount++;
     if (readyCount == 2) ws_init();
 }

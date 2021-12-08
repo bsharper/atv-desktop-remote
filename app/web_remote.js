@@ -178,19 +178,20 @@ window.addEventListener('keydown', e => {
             return false;
         }
     })
-    console.log(`fnd: ${fnd}`)
-    if (!fnd) {
-        console.log('!!! here')
 
-        Object.keys(keymap).forEach(k => {
-            if (key == k) {
-                fnd = true;
-                sendCommand(k);
-                e.preventDefault();
-                return false;
-            }
-        })
-    }
+    // console.log(`fnd: ${fnd}`)
+    // if (!fnd) {
+    //     console.log('!!! here')
+
+    //     Object.keys(keymap).forEach(k => {
+    //         if (key == k) {
+    //             fnd = true;
+    //             sendCommand(k);
+    //             e.preventDefault();
+    //             return false;
+    //         }
+    //     })
+    // }
 
 })
 
@@ -365,7 +366,7 @@ function submitCode() {
 }
 
 function showKeyMap() {
-    $(".directionTable").show();
+    $(".directionTable").fadeIn();
     var tvTimer;
     $("[data-key]").off('mousedown mouseup mouseleave');
     $("[data-key]").on('mousedown', function(e) {
@@ -678,3 +679,7 @@ try {
     nativeTheme.removeAllListeners();
 } catch (err) {}
 nativeTheme.on('updated', themeUpdated);
+
+$(function() {
+    ipcRenderer.invoke('isWSRunning')
+})
