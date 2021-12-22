@@ -31,7 +31,11 @@ const ws_keymap = {
     "Next": "skip_forward",
     "[": "skip_backward",
     "]": "skip_forward",
-    "g": "top_menu"
+    "g": "top_menu",
+    "+": "volume_up",
+    "=": "volume_up",
+    "-": "volume_down",
+    "_": "volume_down"
 }
 
 const keymap = {
@@ -63,7 +67,9 @@ const keymap = {
 
 const niceButtons = {
     "TV": "Tv",
-    "play/pause": "play_pause"
+    "play/pause": "play_pause",
+    'Lower Volume': 'volume_down',
+    'Raise Volume': 'volume_up'
 }
 
 const keyDesc = {
@@ -102,6 +108,11 @@ ipcRenderer.on('mainLog', (event, txt) => {
 
 ipcRenderer.on('powerResume', (event, arg) => {
     connectToATV();
+})
+
+ipcRenderer.on('sendCommand', (event, key) => {
+    console.log(`sendCommand from main: ${key}`)
+    sendCommand(key);
 })
 
 ipcRenderer.on('wsserver_started', () => {
@@ -143,14 +154,24 @@ window.addEventListener('keyup', e => {
     }
 });
 
+window.addEventListener('app-command', (e, cmd) => {
+    console.log('app-command', e, cmd);
+})
+
 window.addEventListener('keydown', e => {
+    //console.log(e);
     var key = e.key;
     if (key == ' ') key = 'Space';
     var mods = ["Control", "Shift", "Alt", "Option", "Fn", "Hyper", "OS", "Super", "Meta", "Win"].filter(mod => { return e.getModifierState(mod) })
     if (mods.length > 0 && mods[0] == 'Alt') {
         toggleAltText(false);
     }
-    if (mods.length > 0) return
+    var shifted = false;
+    if (mods.length == 1 && mods[0] == "Shift") {
+        shifted = true;
+        mods = []
+    }
+    if (mods.length > 0) return;
 
     if (key == 'q') {
         qPresses++;
@@ -173,7 +194,7 @@ window.addEventListener('keydown', e => {
     Object.keys(ws_keymap).forEach(k => {
         if (key == k) {
             fnd = true;
-            sendCommand(k);
+            sendCommand(k, shifted);
             e.preventDefault();
             return false;
         }
@@ -294,7 +315,8 @@ function _updatePlayState() {
 
 var updatePlayState = lodash.debounce(_updatePlayState, 300);
 
-async function sendCommand(k) {
+async function sendCommand(k, shifted) {
+    if (typeof shifted === 'undefined') shifted = false;
     console.log(`sendCommand: ${k}`)
     if (k == 'Pause') k = 'Space';
     var rcmd = ws_keymap[k];
@@ -314,21 +336,27 @@ async function sendCommand(k) {
         var pptxt = rcmd == "Pause" ? "Play" : "Pause";
         el.find('.keyText').html(pptxt);
     }
-    console.log(`Keydown: ${k}, sending command: ${rcmd}`)
+    console.log(`Keydown: ${k}, sending command: ${rcmd} (shifted: ${shifted})`)
     previousKeys.push(rcmd);
     if (previousKeys.length > 10) previousKeys.shift()
     var desc = rcmd;
+    if (desc == 'volume_down') desc = 'Lower Volume'
+    if (desc == 'volume_up') desc = 'Raise Volume'
     if (desc == 'play_pause') desc = "play/pause"
     if (desc == 'Tv') desc = 'TV'
     if (desc == 'LongTv') desc = 'TV long press'
     showAndFade(desc);
-    ws_sendCommand(rcmd)
-        // try {
-        //     await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
-        // } catch (err) {
-        //     console.log('Error sending key', err);
-        //     _connectToATV();
-        // }
+    if (shifted) {
+        ws_sendCommandAction(rcmd, "Hold")
+    } else {
+        ws_sendCommand(rcmd)
+    }
+    // try {
+    //     await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
+    // } catch (err) {
+    //     console.log('Error sending key', err);
+    //     _connectToATV();
+    // }
 }
 
 function isConnected() {

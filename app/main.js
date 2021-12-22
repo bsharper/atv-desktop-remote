@@ -6,6 +6,7 @@ const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
 const server_runner = require('./server_runner')
+
 server_runner.startServer();
 
 // process.on("uncaughtException", server_runner.stopServer);
@@ -15,6 +16,10 @@ global["server_runner"] = server_runner;
 
 const preloadWindow = true;
 const readyEvent = preloadWindow ? "ready" : "after-create-window";
+
+const volumeButtons = ['VolumeUp', 'VolumeDown', 'VolumeMute']
+
+var handleVolumeButtonsGlobal = false;
 
 var mb;
 
@@ -57,7 +62,13 @@ function createWindow() {
     global['MB'] = mb;
     mb.on(readyEvent, () => {
         win = mb.window;
-
+        // interval = setInterval(() => {
+        //     //console.log(`win visible: ${win.isVisible()}`)
+        //     var kvs = volumeButtons.map(btn => {
+        //         return `${btn}: ${globalShortcut.isRegistered(btn)}`
+        //     });
+        //     console.log(kvs.join(", "));
+        // }, 2000);
 
         win.on('close', () => {
             console.log('window closed, quitting')
@@ -65,7 +76,12 @@ function createWindow() {
         })
         win.on('show', () => {
             win.webContents.send('shortcutWin');
+            if (handleVolumeButtonsGlobal) handleVolume();
             //console.log('showing window');
+        })
+
+        win.on('hide', () => {
+            if (handleVolumeButtonsGlobal) unhandleVolume();
         })
 
         win.webContents.on('will-navigate', (e, url) => {
@@ -75,6 +91,7 @@ function createWindow() {
             console.log(`ipcDebug: ${arg}`)
         })
         ipcMain.handle('quit', event => {
+            server_runner.stopServer();
             app.exit()
         });
         ipcMain.handle('alwaysOnTop', (event, arg) => {
@@ -165,6 +182,29 @@ function getWorkingPath() {
     return rp
 }
 
+function unhandleVolume() {
+    volumeButtons.forEach(btn => {
+        console.log(`unregister: ${btn}`)
+        globalShortcut.unregister(btn);
+    })
+}
+
+function handleVolume() {
+    volumeButtons.forEach(btn => {
+        console.log(`register: ${btn}`)
+        globalShortcut.register(btn, () => {
+            var keys = {
+                "VolumeUp": "volume_up",
+                "VolumeDown": "volume_down",
+                "VolumeMute": "volume_mute"
+            }
+            var key = keys[btn]
+            console.log(`sending ${key} for ${btn}`)
+            win.webContents.send('sendCommand', key);
+        })
+    })
+}
+
 app.whenReady().then(() => {
     console.log(getWorkingPath())
     server_runner.testPythonExists().then(r => {
@@ -174,6 +214,9 @@ app.whenReady().then(() => {
     })
 
     createWindow();
+    // globalShortcut.registerAll(, (a, b, c) => {
+    //     console.log('volume', a, b, c);
+    // })
     globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
         if (mb.window.isVisible()) {
             hideWindow();

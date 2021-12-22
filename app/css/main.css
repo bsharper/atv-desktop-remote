@@ -345,6 +345,10 @@ aside {
     justify-content: space-evenly;
 }
 
+.volumeKeys {
+    opacity: 0.50;
+}
+
 
 /* .darkMode .select2-container {
     background-color: #333;

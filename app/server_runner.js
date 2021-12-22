@@ -1,9 +1,11 @@
 const spawn = require('child_process').spawn
 const exec = require('child_process').exec
+const WebSocket = require('ws').WebSocket
 const readline = require('readline')
 const fs = require('fs')
 const fsp = fs.promises
 const EventEmitter = require('events');
+const path = require('path')
 
 var server_events = new EventEmitter();
 var proc = false;
@@ -11,12 +13,45 @@ var proc = false;
 var showOutputs = false;
 var serverRunning = false;
 
+const pyscript_path = '/Users/brianharper/Projects/atv-desktop-remote/pytest/'
+
 function debounce(func, timeout = 300) {
     let timer;
     return (...args) => {
         clearTimeout(timer);
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
+}
+
+function killServer() {
+    console.log('killServer');
+    return new Promise((resolve, reject) => {
+        var ws_url = 'ws://localhost:8765'
+        var lws = new WebSocket(ws_url, {
+            perMessageDeflate: false
+        });
+        var ksto = setTimeout(() => {
+            console.log('killServer timed out')
+            reject();
+        }, 500);
+        lws.once('open', function open() {
+            console.log('killServer open');
+            clearTimeout(ksto);
+            lws.send(JSON.stringify({ cmd: 'quit' }))
+            resolve();
+        });
+    })
+}
+
+async function stopServerFile() {
+    var stopFilePath = path.join(pyscript_path, "stopserver");
+    await fsp.writeFile(stopFilePath, "stop");
+    console.log('stopserver written');
+}
+
+function stopServerFileSync() {
+    var stopFilePath = path.join(pyscript_path, "stopserver");
+    fs.writeFileSync(stopFilePath, "stop");
 }
 
 function _announceServerStart() {
@@ -57,10 +92,11 @@ function parseLine(streamName, line) {
 function stopServer() {
     console.log('stopServer');
     serverRunning = false;
+    try {
+        if (proc) proc.removeAllListeners();
+    } catch (e) {}
+    stopServerFileSync();
     if (proc && !proc.killed) {
-        try {
-            proc.removeAllListeners();
-        } catch (e) {}
         try {
             proc.kill()
         } catch (e) {}
@@ -71,6 +107,12 @@ function stopServer() {
             proc = false;
         })
     }
+
+    // try {
+    //     await killServer();
+    // } catch (e) {
+    //     console.log(e);
+    // }
 }
 
 var totalRuns = 100;
@@ -83,15 +125,20 @@ function startServer() {
     //     totalRuns -= 1
     //     if (totalRuns <= 0) clearInterval(watchServerInterval);
     // }, 100)
+    //showOutputs = true;
+    //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/atv_ws_env/bin/python /Users/brianharper/Projects/atv-desktop-remote/pytest/wsserver.py", { detached: false, shell: true })
     proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
+
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
 
     stdout.on("line", line => {
+        //console.log(`stdout: ${line}`)
         parseLine("stdout", line);
     })
 
     stderr.on("line", line => {
+        //console.log(`stderr: ${line}`)
         parseLine("stderr", line)
     })
 

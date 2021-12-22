@@ -24,6 +24,8 @@ var connection_failure = false;
 var atv_connected = false;
 var ws_pairDevice = "";
 
+var ws_url = 'ws://localhost:8765'
+
 var atv_events = new EventEmitter();
 var pending = []
 
@@ -42,6 +44,16 @@ function sendMessage(command, data) {
     ws.send(JSON.stringify({ cmd: command, data: data }))
 }
 
+function killServer() {
+    var lws = new WebSocket(ws_url, {
+        perMessageDeflate: false
+    });
+
+    lws.once('open', function open() {
+        lws.send(JSON.stringify({ cmd: 'quit' }))
+    });
+}
+
 function reconnect() {
     if (ws_timeout) return;
     ws_timeout = setTimeout(() => {
@@ -55,11 +67,11 @@ function reconnect() {
 }
 
 function startWebsocket() {
-    ws = new WebSocket('ws://localhost:8765', {
+    ws = new WebSocket(ws_url, {
         perMessageDeflate: false
     });
 
-    ws.on('open', function open() {
+    ws.once('open', function open() {
         ws_connected = true;
         console.log('ws open');
         if (scanWhenOpen) ws_startScan();
@@ -141,6 +153,12 @@ function ws_startScan() {
 function ws_sendCommand(cmd) {
     //console.log(`ws_sendCommand: ${cmd}`)
     sendMessage("key", cmd)
+}
+
+function ws_sendCommandAction(cmd, taction) {
+    // taction can be 'DoubleTap', 'Hold', 'SingleTap'
+    //console.log(`ws_sendCommandAction: ${cmd} - ${taction}`)
+    sendMessage("key", { "key": cmd, "taction": taction })
 }
 
 function ws_connect(creds) {
