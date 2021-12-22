@@ -2,7 +2,7 @@ const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcu
 var win;
 const { ipcMain } = require('electron')
 const path = require('path');
-const remote = require('./remote')
+//const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
 const server_runner = require('./server_runner')
@@ -99,18 +99,22 @@ function createWindow() {
             console.log(`setting alwaysOnTop: ${tf}`)
             mb.window.setAlwaysOnTop(tf);
         })
-        ipcMain.handle('scanDevices', async(event, arg) => {
-            var ks = await remote.scanDevices()
-            event.sender.send('scanDevicesResult', ks)
-        })
-        ipcMain.handle('startPair', async(event, arg) => {
-            await remote.startPair(arg);
-            event.sender.send('gotStartPair');
-        })
-        ipcMain.handle('finishPair', async(event, arg) => {
-            var creds = await remote.finishPair(arg);
-            event.sender.send('pairCredentials', creds);
-        })
+
+        // ipcMain.handle('scanDevices', async(event, arg) => {
+        //     var ks = await remote.scanDevices()
+        //     event.sender.send('scanDevicesResult', ks)
+        // })
+
+        // ipcMain.handle('startPair', async(event, arg) => {
+        //     await remote.startPair(arg);
+        //     event.sender.send('gotStartPair');
+        // })
+
+        // ipcMain.handle('finishPair', async(event, arg) => {
+        //     var creds = await remote.finishPair(arg);
+        //     event.sender.send('pairCredentials', creds);
+        // })
+
         ipcMain.handle('hideWindow', (event) => {
             console.log('hiding window');
             mb.hideWindow();

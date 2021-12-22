@@ -9,7 +9,8 @@
         "appId": "com.electron.atvMacRemote",
         "mac": {
             "category": "public.app-category.utilities"
-        }
+        },
+        "extraFiles": ["server/wsserver.py"]
     },
     "scripts": {
         "start": "electron app",
@@ -21,6 +22,6 @@
     },
     "devDependencies": {
         "electron": "^13.1.6",
-        "electron-builder": "^22.10.5"
+        "electron-builder": "^22.14.5"
     }
 }

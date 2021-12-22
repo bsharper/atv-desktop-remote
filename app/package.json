@@ -14,13 +14,6 @@
         "bluebird": "^3.7.2",
         "jquery": "^3.5.1",
         "menubar": "^9.0.2",
-        "node-appletv-x": "^1.0.19",
-        "socket.io-client": "^4.4.0",
-        "websocket": "^1.0.34",
         "ws": "^8.3.0"
-    },
-    "optionalDependencies": {
-        "bufferutil": "^4.0.5",
-        "utf-8-validate": "^5.0.7"
     }
 }
