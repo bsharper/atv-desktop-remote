@@ -70,6 +70,16 @@ function createWindow() {
         //     console.log(kvs.join(", "));
         // }, 2000);
 
+        win.on('runJS', (e, code) => {
+            try {
+                var r = eval(code);
+                console.log(r);
+            } catch (e) {
+                console.log(e);
+            }
+
+        })
+
         win.on('close', () => {
             console.log('window closed, quitting')
             app.exit();
@@ -210,6 +220,7 @@ function handleVolume() {
 }
 
 app.whenReady().then(() => {
+    console.log(`app path: ${app.getAppPath()}`);
     console.log(getWorkingPath())
     server_runner.testPythonExists().then(r => {
         console.log(`python exists: ${r}`)

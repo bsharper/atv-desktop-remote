@@ -10,10 +10,10 @@ const path = require('path')
 var server_events = new EventEmitter();
 var proc = false;
 
-var showOutputs = false;
+var showOutputs = true;
 var serverRunning = false;
 
-const pyscript_path = '/Users/brianharper/Projects/atv-desktop-remote/pytest/'
+const pyscript_path = 'D:/Development/atv-desktop-remote/server'
 
 function debounce(func, timeout = 300) {
     let timer;
@@ -22,7 +22,6 @@ function debounce(func, timeout = 300) {
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
 }
-
 function killServer() {
     console.log('killServer');
     return new Promise((resolve, reject) => {
@@ -127,7 +126,9 @@ function startServer() {
     // }, 100)
     //showOutputs = true;
     //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/atv_ws_env/bin/python /Users/brianharper/Projects/atv-desktop-remote/pytest/wsserver.py", { detached: false, shell: true })
-    proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
+    //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
+    var bat_path = path.join(pyscript_path, 'start_server.bat')
+    proc = spawn('cmd.exe', ['/c', bat_path], {shell: true, detached: false })
 
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
