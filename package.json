@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "0.9.8",
+    "version": "1.0.0",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
@@ -10,7 +10,9 @@
         "mac": {
             "category": "public.app-category.utilities"
         },
-        "extraFiles": ["server/wsserver.py"]
+        "extraFiles": [
+            "server/wsserver.py"
+        ]
     },
     "scripts": {
         "start": "electron app",
