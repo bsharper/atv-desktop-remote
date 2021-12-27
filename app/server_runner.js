@@ -153,7 +153,7 @@ function startServer() {
 
     if (process.platform == "win32") {
         var bat_path = path.join(wpath, 'start_server.bat')
-        proc = spawn('cmd.exe', ['/c', bat_path], { shell: true, detached: false })
+        proc = spawn('cmd.exe', ['/c', bat_path], { detached: false })
     } else {
         var sh_path = path.join(wpath, 'start_server.sh');
         fs.chmodSync(sh_path, 0o755);
