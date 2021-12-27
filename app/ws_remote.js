@@ -213,9 +213,13 @@ function checkWSConnection() {
 
 function ws_init() {
     startWebsocket();
-    ws_watchdog = setInterval(() => {
-        checkWSConnection()
-    }, 5000);
+    setTimeout(() => {
+        // not sure if needed, but server start now tries to install required python packages which can be slow
+        ws_watchdog = setInterval(() => {
+            checkWSConnection()
+        }, 5000);
+    }, 15000)
+
 }
 
 function incReady() {

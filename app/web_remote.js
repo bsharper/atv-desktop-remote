@@ -494,32 +494,8 @@ async function connectToATV() {
     $("#runningElements").show();
     atv_credentials = JSON.parse(localStorage.getItem('atvcreds'))
 
-    // try {
-    //     let devices = await atv.scan(credentials.uniqueIdentifier)
-    //     device = devices[0];
-    //     await device.openConnection(credentials);
-    // } catch (err) {
-    //     connecting = false;
-    //     console.log(`Error connecting`, err)
-    //     setStatus(`Error connecting to ${pairDevice}`)
-    //     setTimeout(() => {
-    //         startScan();
-    //     }, 1000);
-    // }
-    // device.playing = false
-    // device.lastMessage = {}
-    // device.lastMessages = []
-    // device.bundleIdentifier = "";
-    // device.playbackItem = {};
-    // device.removeAllListeners('message');
-    // device.off('message', handleMessage);
-    // device.on('message', handleMessage);
-    // device.Key = atv.AppleTV.Key;
-
     $("#pairingElements").hide();
-    //var deviceID = `${device.name} (${device.address})`
-    //localStorage.setItem('currentDeviceID', deviceID);
-    //saveRemote(deviceID, atv_credentials)
+
     await ws_connect(atv_credentials);
     createATVDropdown();
     showKeyMap();

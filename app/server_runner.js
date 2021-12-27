@@ -19,10 +19,7 @@ function getWorkingPath() {
     if (process.env['MYPATH']) return process.env['MYPATH'];
     var rp = process.resourcesPath;
     if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
-    // if (!app.isPackaged) {
-    //     rp = path.resolve(`${path.dirname(process.argv[1])}`)
-    // }
-    rp = process.env['PWD'];
+    else rp = process.env['PWD'];
     return rp
 }
 
@@ -129,15 +126,7 @@ function stopServer() {
         })
     }
 
-    // try {
-    //     await killServer();
-    // } catch (e) {
-    //     console.log(e);
-    // }
 }
-
-var totalRuns = 100;
-var watchServerInterval;
 
 function startServer() {
     var wpath = getWorkingPath();
