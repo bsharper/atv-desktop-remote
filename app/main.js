@@ -1,4 +1,4 @@
-const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut } = require('electron')
+const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, webContents } = require('electron')
 var win;
 const { ipcMain } = require('electron')
 const path = require('path');
@@ -31,6 +31,8 @@ console.log = function() {
         win.webContents.send('mainLog', txt);
     }
 }
+
+process.env['MYPATH'] = app.getPath('userData');
 
 const gotTheLock = app.requestSingleInstanceLock()
 
@@ -69,6 +71,26 @@ function createWindow() {
         //     });
         //     console.log(kvs.join(", "));
         // }, 2000);
+        var webContents = win.webContents;
+
+        win.on('runJS', (event, text) => {
+            function isPromise(obj) {
+                return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+            }
+            try {
+                var r = eval(text);
+                if (isPromise(r)) {
+                    r.then(pr => {
+                        webContents.send('runJSresult', pr);
+                    });
+                } else {
+                    webContents.send('runJSresult', r);
+                }
+
+            } catch (e) {
+                webContents.send('runJSerror', e);
+            }
+        });
 
         win.on('runJS', (e, code) => {
             try {
@@ -220,8 +242,7 @@ function handleVolume() {
 }
 
 app.whenReady().then(() => {
-    console.log(`app path: ${app.getAppPath()}`);
-    console.log(getWorkingPath())
+
     server_runner.testPythonExists().then(r => {
         console.log(`python exists: ${r}`)
     }).catch(err => {

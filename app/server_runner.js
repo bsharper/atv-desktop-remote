@@ -10,10 +10,24 @@ const path = require('path')
 var server_events = new EventEmitter();
 var proc = false;
 
-var showOutputs = true;
+var showOutputs = false;
 var serverRunning = false;
 
-const pyscript_path = 'D:/Development/atv-desktop-remote/server'
+
+
+
+
+function getWorkingPath() {
+    var rp = process.resourcesPath;
+    if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
+    // if (!app.isPackaged) {
+    //     rp = path.resolve(`${path.dirname(process.argv[1])}`)
+    // }
+    rp = process.env['PWD'];
+    return rp
+}
+
+const pyscript_path = path.join(getWorkingPath(), 'server');
 
 function debounce(func, timeout = 300) {
     let timer;
@@ -22,6 +36,7 @@ function debounce(func, timeout = 300) {
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
 }
+
 function killServer() {
     console.log('killServer');
     return new Promise((resolve, reject) => {
@@ -89,7 +104,6 @@ function parseLine(streamName, line) {
 }
 
 function stopServer() {
-    console.log('stopServer');
     serverRunning = false;
     try {
         if (proc) proc.removeAllListeners();
@@ -126,9 +140,14 @@ function startServer() {
     // }, 100)
     //showOutputs = true;
     //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/atv_ws_env/bin/python /Users/brianharper/Projects/atv-desktop-remote/pytest/wsserver.py", { detached: false, shell: true })
-    //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
-    var bat_path = path.join(pyscript_path, 'start_server.bat')
-    proc = spawn('cmd.exe', ['/c', bat_path], {shell: true, detached: false })
+
+
+    if (process.platform == "win32") {
+        var bat_path = path.join(pyscript_path, 'start_server.bat')
+        proc = spawn('cmd.exe', ['/c', bat_path], { shell: true, detached: false })
+    } else {
+        proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
+    }
 
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });

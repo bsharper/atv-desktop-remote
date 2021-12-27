@@ -138,6 +138,22 @@ window.addEventListener('beforeunload', async e => {
     }
 });
 
+function uuidv4_4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+        .replace(/(x)|(y)|([-4])/g, function(match, p1, p2, p3) {
+            if (p1) return Math.floor(Math.random() * 0xf).toString(16);
+            if (p2) return Math.floor(Math.random() * 4 + 8).toString(16);
+            return p3;
+        });
+}
+
+function runJSMain(code) {
+    var uuid = uuidv4_4()
+    ipcRenderer.once(`response_${uuid}`, (r) => {
+
+    })
+}
+
 function toggleAltText(tf) {
     if (tf) {
         $(".keyText").show();
@@ -418,35 +434,35 @@ function showKeyMap() {
     });
 }
 
-// function runMainJS(js, handleErrors) {
-//     return new Promise((resolve, reject) => {
-//         function herr(event, err) {
-//             console.log(`runMainJS error response`, err)
-//             wrapup({ result: null, error: err });
-//         }
+function runMainJS(js, handleErrors) {
+    return new Promise((resolve, reject) => {
+        function herr(event, err) {
+            console.log(`runMainJS error response`, err)
+            wrapup({ result: null, error: err });
+        }
 
-//         function hresult(event, r) {
-//             console.log('runMainJS result', r)
-//             wrapup({ result: r, error: null });
-//         }
+        function hresult(event, r) {
+            console.log('runMainJS result', r)
+            wrapup({ result: r, error: null });
+        }
 
-//         function wrapup(r) {
-//             ipcRenderer.off('runJSresult', hresult);
-//             ipcRenderer.off('runJSerror', herr);
-//             if (handleErrors) return resolve(r);
-//             else reject(r.err);
-//         }
+        function wrapup(r) {
+            ipcRenderer.off('runJSresult', hresult);
+            ipcRenderer.off('runJSerror', herr);
+            if (handleErrors) return resolve(r);
+            else reject(r.err);
+        }
 
-//         ipcRenderer.once('runJSresult', hresult)
-//         ipcRenderer.once('runJSerror', herr);
-//         try {
-//             ipcRenderer.invoke('runJS', js);
-//         } catch (err) {
-//             reject(err);
-//         }
-//     })
+        ipcRenderer.once('runJSresult', hresult)
+        ipcRenderer.once('runJSerror', herr);
+        try {
+            ipcRenderer.invoke('runJS', js);
+        } catch (err) {
+            reject(err);
+        }
+    })
 
-// }
+}
 
 var connecting = false;
 
