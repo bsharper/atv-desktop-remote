@@ -6,3 +6,4 @@ atv_ws_env
 old
 *.gz
 pytest
+build/pyscripts.js

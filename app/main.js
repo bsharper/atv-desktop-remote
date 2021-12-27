@@ -5,6 +5,9 @@ const path = require('path');
 //const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
+
+process.env['MYPATH'] = app.getPath('userData');
+
 const server_runner = require('./server_runner')
 
 server_runner.startServer();
@@ -32,7 +35,7 @@ console.log = function() {
     }
 }
 
-process.env['MYPATH'] = app.getPath('userData');
+
 
 const gotTheLock = app.requestSingleInstanceLock()
 

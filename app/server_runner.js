@@ -6,6 +6,7 @@ const fs = require('fs')
 const fsp = fs.promises
 const EventEmitter = require('events');
 const path = require('path')
+const sfiles = require('./pyscripts').files;
 
 var server_events = new EventEmitter();
 var proc = false;
@@ -14,10 +15,8 @@ var showOutputs = false;
 var serverRunning = false;
 
 
-
-
-
 function getWorkingPath() {
+    if (process.env['MYPATH']) return process.env['MYPATH'];
     var rp = process.resourcesPath;
     if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
     // if (!app.isPackaged) {
@@ -25,6 +24,15 @@ function getWorkingPath() {
     // }
     rp = process.env['PWD'];
     return rp
+}
+
+function fileExists(fn) {
+    return new Promise((resolve, reject) => {
+        fs.access(fn, err => {
+            if (err) return resolve(false);
+            resolve(true);
+        })
+    })
 }
 
 const pyscript_path = path.join(getWorkingPath(), 'server');
@@ -58,13 +66,13 @@ function killServer() {
 }
 
 async function stopServerFile() {
-    var stopFilePath = path.join(pyscript_path, "stopserver");
+    var stopFilePath = path.join(getWorkingPath(), "stopserver");
     await fsp.writeFile(stopFilePath, "stop");
     console.log('stopserver written');
 }
 
 function stopServerFileSync() {
-    var stopFilePath = path.join(pyscript_path, "stopserver");
+    var stopFilePath = path.join(getWorkingPath(), "stopserver");
     fs.writeFileSync(stopFilePath, "stop");
 }
 
@@ -132,33 +140,34 @@ var totalRuns = 100;
 var watchServerInterval;
 
 function startServer() {
+    var wpath = getWorkingPath();
+    Object.keys(sfiles).forEach(fn => {
+        var txt = sfiles[fn];
+        var out_path = path.join(wpath, fn);
+        fs.writeFileSync(out_path, txt, { encoding: 'utf-8' });
+        console.log(`Writing ${fn} to ${out_path}...`)
+    })
+
     stopServer();
-    // watchServerInterval = setInterval(() => {
-    //     console.log(`isServerRunning: ${isServerRunning()}`)
-    //     totalRuns -= 1
-    //     if (totalRuns <= 0) clearInterval(watchServerInterval);
-    // }, 100)
-    //showOutputs = true;
-    //proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/atv_ws_env/bin/python /Users/brianharper/Projects/atv-desktop-remote/pytest/wsserver.py", { detached: false, shell: true })
 
 
     if (process.platform == "win32") {
-        var bat_path = path.join(pyscript_path, 'start_server.bat')
+        var bat_path = path.join(wpath, 'start_server.bat')
         proc = spawn('cmd.exe', ['/c', bat_path], { shell: true, detached: false })
     } else {
-        proc = spawn("/Users/brianharper/Projects/atv-desktop-remote/pytest/start_server.sh", { detached: false })
+        var sh_path = path.join(wpath, 'start_server.sh');
+        fs.chmodSync(sh_path, 0o755);
+        proc = spawn(sh_path, { detached: false })
     }
 
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
 
     stdout.on("line", line => {
-        //console.log(`stdout: ${line}`)
         parseLine("stdout", line);
     })
 
     stderr.on("line", line => {
-        //console.log(`stderr: ${line}`)
         parseLine("stderr", line)
     })
 
