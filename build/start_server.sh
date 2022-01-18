@@ -9,5 +9,5 @@ done
 }
 kill_proc
 kill_proc "-9"
-python -m pip install -q --user websockets pyatv
-python wsserver.py
+python3 -m pip install -q --user websockets pyatv
+python3 wsserver.py

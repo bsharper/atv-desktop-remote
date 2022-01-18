@@ -16,11 +16,12 @@ var serverRunning = false;
 
 
 function getWorkingPath() {
-    if (process.env['MYPATH']) return process.env['MYPATH'];
-    var rp = process.resourcesPath;
-    if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
-    else rp = process.env['PWD'];
-    return rp
+    return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
+    // if (process.env['MYPATH']) return process.env['MYPATH'];
+    // var rp = process.resourcesPath;
+    // if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
+    // else rp = process.env['PWD'];
+    // return rp
 }
 
 function fileExists(fn) {
@@ -32,7 +33,16 @@ function fileExists(fn) {
     })
 }
 
-const pyscript_path = path.join(getWorkingPath(), 'server');
+function fileExistsSync(fn) {
+    try {
+        fs.accessSync(fn);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+
 
 function debounce(func, timeout = 300) {
     let timer;
@@ -84,9 +94,10 @@ var announceServerStart = debounce(_announceServerStart, 200);
 
 function testPythonExists() {
     return new Promise((resolve, reject) => {
-        exec("python -V", (err, stdout, stderr) => {
+        exec("python3 -V", (err, stdout, stderr) => {
             if (err) return reject(err);
-            resolve(stdout);
+            var txt = stdout.replace(/\n/g, '').trim();
+            resolve(txt);
         })
     })
 }
@@ -125,18 +136,26 @@ function stopServer() {
             proc = false;
         })
     }
-
 }
 
-function startServer() {
+function writeSupportFiles() {
     var wpath = getWorkingPath();
     Object.keys(sfiles).forEach(fn => {
         var txt = sfiles[fn];
         var out_path = path.join(wpath, fn);
         fs.writeFileSync(out_path, txt, { encoding: 'utf-8' });
         console.log(`Writing ${fn} to ${out_path}...`)
+        if (fn == "start_server.sh" && process.platform != "win32") {
+            fs.chmodSync(out_path, 0o755);
+        }
     })
+}
 
+
+function startServer() {
+    var wpath = getWorkingPath();
+    var noWriteFiles = path.join(wpath, "skip_file_write");
+    if (!fileExistsSync(noWriteFiles)) writeSupportFiles();
     stopServer();
 
 
@@ -145,7 +164,6 @@ function startServer() {
         proc = spawn('cmd.exe', ['/c', bat_path], { detached: false })
     } else {
         var sh_path = path.join(wpath, 'start_server.sh');
-        fs.chmodSync(sh_path, 0o755);
         proc = spawn(sh_path, { detached: false })
     }
 
@@ -186,7 +204,7 @@ process.on("beforeExit", () => {
 
 
 async function main() {
-    var tf = await pythonExists()
+    var tf = await testPythonExists()
     console.log(`python exists: ${tf}`)
     server_events.on("started", () => {
         console.log('Woohoo, we are up and running');

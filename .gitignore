@@ -7,3 +7,4 @@ old
 *.gz
 pytest
 build/pyscripts.js
+stopserver

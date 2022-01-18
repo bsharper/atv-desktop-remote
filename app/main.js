@@ -6,7 +6,7 @@ const path = require('path');
 const menubar = require('menubar').menubar;
 const util = require('util');
 
-process.env['MYPATH'] = app.getPath('userData');
+process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
 
 const server_runner = require('./server_runner')
 
@@ -270,7 +270,7 @@ app.whenReady().then(() => {
         applicationVersion: version,
         version: version,
         credits: "Brian Harper",
-        copyright: "Copyright 2021",
+        copyright: "Copyright 2022",
         website: "https://github.com/bsharper",
         iconPath: "./images/full.png"
     });
