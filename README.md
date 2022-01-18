@@ -11,6 +11,8 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ## Download
 
+**The downloadable version does NOT work with tvOS 15 yet.**
+
  I've created macOS and Windows releases available here: https://github.com/bsharper/atv-desktop-remote/releases
 
 ## Usage
@@ -18,7 +20,8 @@ A simple menubar app that allows you to control an Apple TV from your desktop
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
  2. Press `Option` to see what the characters are mapped to when the application is open.
 
- ## Building
+
+ ## Running
 
  1. Run `npm install` or `yarn`
  2. Run `npm start` or `yarn start`
