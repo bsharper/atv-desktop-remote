@@ -11,7 +11,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
  ## Download
 
-**The downloadable version does NOT work with tvOS 15 yet.**
+[There is a beta version that works with tvOS 15.](https://github.com/bsharper/atv-desktop-remote/releases/tag/v1.0.0-beta). This requires Python 3 to be installed. Please read the information on the release page before installing.
 
  I've created macOS and Windows releases available here: https://github.com/bsharper/atv-desktop-remote/releases
 
