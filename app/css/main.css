@@ -30,7 +30,9 @@ a:hover,
 a:active {
     color: black;
 }
-
+#topTextKBLink {
+    display:none;
+}
 #exitLinkWrapper {
     cursor: pointer;
 }

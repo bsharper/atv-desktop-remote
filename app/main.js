@@ -7,7 +7,7 @@ const menubar = require('menubar').menubar;
 const util = require('util');
 var secondWindow;
 process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
-
+const lodash = _ = require('./js/lodash.min');
 const server_runner = require('./server_runner')
 
 server_runner.startServer();
@@ -48,6 +48,7 @@ if (!gotTheLock) {
     })
 }
 
+
 function createInputWindow() {
     secondWindow = new BrowserWindow({ 
         webPreferences: {
@@ -63,10 +64,12 @@ function createInputWindow() {
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
-        secondWindow.hide();
+        showWindowThrottle();
     });
+    secondWindow.on("blur", () => {
+        showWindowThrottle();
+    })
     secondWindow.hide();
-    
 }
 
 function createWindow() {
@@ -245,6 +248,9 @@ function showWindow() {
         mb.window.focus();
     }, 200);
 }
+
+//var showWindowDebounce = lodash.debounce(showWindow, 100);
+var showWindowThrottle = lodash.throttle(showWindow, 100);
 
 function hideWindow() {
     mb.hideWindow();

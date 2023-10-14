@@ -168,6 +168,18 @@ function toggleAltText(tf) {
     }
 }
 
+function openKeyboardClick(event) {
+    event.preventDefault();
+    openKeyboard();
+}
+
+function openKeyboard() {
+    ipcRenderer.invoke('openInputWindow')
+    setTimeout(() => { // yes, this is done but it works
+        sendMessage("gettext")
+    }, 10)
+}
+
 window.addEventListener('keyup', e => {
     if (e.key == 'Alt') {
         toggleAltText(true);
@@ -204,11 +216,8 @@ window.addEventListener('keydown', e => {
         ipcRenderer.invoke('hideWindow');
     }
     if (key == 'k') {
-        ipcRenderer.invoke('openInputWindow')
-        setTimeout(() => { // yes, this is done but it works
-            sendMessage("gettext")
-        }, 10)
-
+        openKeyboard();
+        return;
     }
     if (!isConnected()) {
         if ($("#pairCode").is(':focus') && key == 'Enter') {
@@ -450,37 +459,45 @@ function showKeyMap() {
         if (e.type == 'mouseleave') return;
         sendCommand('Tv');
     });
+    var creds = _getCreds();
+    if (Object.keys(creds).indexOf("Companion") > -1) {
+        $("#topTextHeader").hide();
+        $("#topTextKBLink").show();
+    } else {
+        $("#topTextHeader").show();
+        $("#topTextKBLink").hide();
+    }
 }
 
-function runMainJS(js, handleErrors) {
-    return new Promise((resolve, reject) => {
-        function herr(event, err) {
-            console.log(`runMainJS error response`, err)
-            wrapup({ result: null, error: err });
-        }
+// function runMainJS(js, handleErrors) {
+//     return new Promise((resolve, reject) => {
+//         function herr(event, err) {
+//             console.log(`runMainJS error response`, err)
+//             wrapup({ result: null, error: err });
+//         }
 
-        function hresult(event, r) {
-            console.log('runMainJS result', r)
-            wrapup({ result: r, error: null });
-        }
+//         function hresult(event, r) {
+//             console.log('runMainJS result', r)
+//             wrapup({ result: r, error: null });
+//         }
 
-        function wrapup(r) {
-            ipcRenderer.off('runJSresult', hresult);
-            ipcRenderer.off('runJSerror', herr);
-            if (handleErrors) return resolve(r);
-            else reject(r.err);
-        }
+//         function wrapup(r) {
+//             ipcRenderer.off('runJSresult', hresult);
+//             ipcRenderer.off('runJSerror', herr);
+//             if (handleErrors) return resolve(r);
+//             else reject(r.err);
+//         }
 
-        ipcRenderer.once('runJSresult', hresult)
-        ipcRenderer.once('runJSerror', herr);
-        try {
-            ipcRenderer.invoke('runJS', js);
-        } catch (err) {
-            reject(err);
-        }
-    })
+//         ipcRenderer.once('runJSresult', hresult)
+//         ipcRenderer.once('runJSerror', herr);
+//         try {
+//             ipcRenderer.invoke('runJS', js);
+//         } catch (err) {
+//             reject(err);
+//         }
+//     })
 
-}
+// }
 
 var connecting = false;
 
@@ -610,10 +627,6 @@ function subMenuClick(event) {
 }
 
 async function confirmExit() {
-    // var r = await dialog.showMessageBox({ type: 'question', message: 'Really quit?', buttons: ["No", "Yes"], defaultId: 1 })
-    // if (r.response) {
-    //     electron.remote.app.quit();
-    // }
     // I decided against this, this behavior annoys me in other programs
     electron.remote.app.quit();
 }
