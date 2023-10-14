@@ -7,6 +7,7 @@ var dialog = remote.dialog;
 var ipcRenderer = electron.ipcRenderer;
 var mb = remote.getGlobal('MB');
 const { Menu, MenuItem } = remote
+const path = require('path');
 //var atv = electron.remote.require('./remote').atv;
 //var NowPlayingInfo = atv.NowPlayingInfo;
 var nativeTheme = electron.remote.nativeTheme;
@@ -396,6 +397,9 @@ async function sendCommand(k, shifted) {
     //     _connectToATV();
     // }
 }
+function getWorkingPath() {
+    return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
+}
 
 function isConnected() {
     return atv_connected
@@ -414,6 +418,7 @@ async function askQuestion(msg) {
 
 
 function startPairing(dev) {
+    $("#initText").hide();
     //setStatus("Enter the pairing code");
     $("#results").hide();
     $("#pairButton").on('click', () => {
@@ -437,6 +442,7 @@ function submitCode() {
 }
 
 function showKeyMap() {
+    $("#initText").hide();
     $(".directionTable").fadeIn();
     var tvTimer;
     $("[data-key]").off('mousedown mouseup mouseleave');
@@ -551,6 +557,7 @@ function setStatus(txt) {
 }
 
 function startScan() {
+    $("#initText").hide();
     $("#loader").fadeIn();
     $("#addNewElements").show();
     $("#runningElements").hide();
@@ -732,5 +739,7 @@ try {
 nativeTheme.on('updated', themeUpdated);
 
 $(function() {
+    var wp = getWorkingPath();
+    $("#workingPathSpan").html(`<strong>${wp}</strong>`)
     ipcRenderer.invoke('isWSRunning')
 })
