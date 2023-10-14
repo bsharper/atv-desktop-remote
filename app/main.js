@@ -5,7 +5,7 @@ const path = require('path');
 //const remote = require('./remote')
 const menubar = require('menubar').menubar;
 const util = require('util');
-
+var secondWindow;
 process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
 
 const server_runner = require('./server_runner')
@@ -48,6 +48,26 @@ if (!gotTheLock) {
     })
 }
 
+function createInputWindow() {
+    secondWindow = new BrowserWindow({ 
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        },
+        hide: true,
+        width: 600, 
+        height: 200,
+        minimizable: false,
+        maximizable: false
+    });
+    secondWindow.loadFile('input.html');
+    secondWindow.on('close', (event) => {
+        event.preventDefault();
+        secondWindow.hide();
+    });
+    secondWindow.hide();
+    
+}
 
 function createWindow() {
     mb = menubar({
@@ -75,7 +95,7 @@ function createWindow() {
         //     console.log(kvs.join(", "));
         // }, 2000);
         var webContents = win.webContents;
-
+        createInputWindow()
         win.on('runJS', (event, text) => {
             function isPromise(obj) {
                 return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
@@ -122,6 +142,12 @@ function createWindow() {
         win.webContents.on('will-navigate', (e, url) => {
             console.log(`will-navigate`, url);
         })
+        ipcMain.on('input-change', (event, data) => {
+            console.log('Received input:', data);
+            // Handle the data or forward it to the main window if necessary
+            win.webContents.send('input-change', data);
+        });
+
         ipcMain.handle('debug', (event, arg) => {
             console.log(`ipcDebug: ${arg}`)
         })
@@ -161,19 +187,31 @@ function createWindow() {
             console.log('isWSRunning');
             if (server_runner.isServerRunning()) win.webContents.send('wsserver_started')
         })
-        ipcMain.handle('runJS', async(event, arg) => {
-            console.log(`runJS ${arg}`)
-            try {
-                var r = eval(arg);
-                if (r && r.then) {
-                    var rr = r;
-                    r = await r;
-                    win.webContents.send('runJSresult', r);
-                }
-            } catch (err) {
-                win.webContents.send('runJSerror', err);
-            }
+        
+        // ipcMain.handle('runJS', async(event, arg) => {
+        //     console.log(`runJS ${arg}`)
+        //     try {
+        //         var r = eval(arg);
+        //         if (r && r.then) {
+        //             var rr = r;
+        //             r = await r;
+        //             win.webContents.send('runJSresult', r);
+        //         }
+        //     } catch (err) {
+        //         win.webContents.send('runJSerror', err);
+        //     }
+        // })
+        ipcMain.handle('closeInputOpenRemote', (event, arg) => {
+            console.log('closeInputOpenRemote');
+            showWindow();
         })
+        ipcMain.handle('openInputWindow', (event, arg) => {
+            secondWindow.show();
+        });
+        ipcMain.handle('current-text', (event, arg) => {
+            console.log('current-text', arg);
+            secondWindow.webContents.send('current-text', arg);
+        });
 
         powerMonitor.addListener('resume', event => {
             win.webContents.send('powerResume');
@@ -200,6 +238,7 @@ function createWindow() {
 }
 
 function showWindow() {
+    secondWindow.hide();
     app.show();
     mb.showWindow();
     setTimeout(() => {

@@ -41,6 +41,7 @@ function sendMessage(command, data) {
         var cmd_ar = pending.shift();
         ws.send(JSON.stringify({ cmd: cmd_ar[0], data: cmd_ar[1] }))
     }
+    console.log(`sendMessage: {cmd:${command}, data:${data}}`)
     ws.send(JSON.stringify({ cmd: command, data: data }))
 }
 
@@ -124,8 +125,15 @@ function startWebsocket() {
             connection_failure = true;
             atv_events.emit("connection_failure", j.data)
         }
+        if (j.command == "startPair2") {
+            $("#pairStepNum").html("2");
+            $("#pairProtocolName").html("Companion");
+        }
+        if (j.command == "current-text") {
+            console.log(`current text: ${j.data}`)
+            ipcRenderer.invoke('current-text', j.data);
+        }
     });
-
 }
 
 
@@ -193,6 +201,18 @@ function ws_finishPair(code) {
     connection_failure = false;
     console.log(`ws_finishPair: ${code}`)
     sendMessage("finishPair", code);
+}
+
+function ws_finishPair1(code) {
+    connection_failure = false;
+    console.log(`ws_finishPair: ${code}`)
+    sendMessage("finishPair1", code);
+}
+
+function ws_finishPair2(code) {
+    connection_failure = false;
+    console.log(`ws_finishPair: ${code}`)
+    sendMessage("finishPair2", code);
 }
 
 function checkWSConnection() {

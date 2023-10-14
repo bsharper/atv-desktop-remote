@@ -164,6 +164,7 @@ function startServer() {
         proc = spawn('cmd.exe', ['/c', bat_path], { detached: false })
     } else {
         var sh_path = path.join(wpath, 'start_server.sh');
+        console.log(sh_path)
         proc = spawn(sh_path, { detached: false })
     }
 
@@ -171,6 +172,7 @@ function startServer() {
     var stderr = readline.createInterface({ input: proc.stderr });
 
     stdout.on("line", line => {
+        console.log(line)
         parseLine("stdout", line);
     })
 

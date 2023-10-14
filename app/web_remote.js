@@ -119,6 +119,10 @@ ipcRenderer.on('wsserver_started', () => {
     ws_server_started();
 })
 
+ipcRenderer.on('input-change', (event, data) => {
+    sendMessage("settext", {text: data});
+});
+
 window.addEventListener('blur', e => {
     toggleAltText(true);
 })
@@ -199,6 +203,13 @@ window.addEventListener('keydown', e => {
     if (key == 'h') {
         ipcRenderer.invoke('hideWindow');
     }
+    if (key == 'k') {
+        ipcRenderer.invoke('openInputWindow')
+        setTimeout(() => { // yes, this is done but it works
+            sendMessage("gettext")
+        }, 10)
+
+    }
     if (!isConnected()) {
         if ($("#pairCode").is(':focus') && key == 'Enter') {
             submitCode();
@@ -238,6 +249,8 @@ function createDropdown(ks) {
     $("#statusText").hide();
     //setStatus("Select a device");
     $("#pairingLoader").html("")
+    $("#pairStepNum").html("1");
+    $("#pairProtocolName").html("AirPort");
     $("#pairingElements").show();
     var ar = ks.map(el => {
         return {
@@ -405,8 +418,13 @@ function startPairing(dev) {
 
 function submitCode() {
     var code = $("#pairCode").val();
+    $("#pairCode").val("");
     //ipcRenderer.invoke('finishPair', code);
-    ws_finishPair(code)
+    if ($("#pairStepNum").text() == "1") {
+        ws_finishPair1(code)
+    } else {
+        ws_finishPair2(code)
+    }
 }
 
 function showKeyMap() {

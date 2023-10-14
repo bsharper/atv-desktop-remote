@@ -12,6 +12,8 @@ logger = logging.getLogger('websockets')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
+
+interface = pyatv.interface
 pair = pyatv.pair
 Protocol = pyatv.const.Protocol
 
@@ -24,19 +26,34 @@ pairing_atv = False
 active_pairing = False
 active_device = False
 active_remote = False
+active_ws = False
 default_port = 8765
+pairing_creds = {}
+
+class ATVKeyboardListener(interface.KeyboardListener):
+    global active_ws
+    def focusstate_update(self, old_state, new_state):
+        print('Focus state changed from {0:s} to {1:s}'.format(old_state, new_state), flush=True)
+        if active_ws:
+            try:
+                loop.run_until_complete(sendCommand(active_ws, "keyboard_changestate", [old_state, new_state]))
+            except Exception as ex:
+                print (f"change state error: {ex}", flush=True)
+                
+
 
 async def sendCommand (ws, command, data=[]):
     r = {"command": command, "data": data}
     await ws.send(json.dumps(r))
 
 async def parseRequest(j, websocket):
-    global scan_lookup, pairing_atv, active_pairing, active_device, active_remote
-    
+    global scan_lookup, pairing_atv, active_pairing, active_device, active_remote, active_ws, pairing_creds
+    active_ws = websocket
     if "cmd" in j.keys():
         cmd = j["cmd"]
     else:
         return
+    #print (f"got command: {cmd}", flush=True)
     
     data = False
     if "data" in j.keys():
@@ -70,6 +87,44 @@ async def parseRequest(j, websocket):
         pairing = await pair(atv, Protocol.AirPlay, loop)
         active_pairing = pairing
         await pairing.begin()
+
+    if cmd == "finishPair1":
+        print("finishPair %s" % (data))
+        pairing = active_pairing
+        pairing.pin(data)
+        await pairing.finish()
+        if pairing.has_paired:
+            print("Paired with device!")
+            print("Credentials:", pairing.service.credentials)
+        else:
+            print("Did not pair with device!")
+            return
+        creds = pairing.service.credentials
+        id = pairing_atv.identifier
+        nj = {"credentials": creds, "identifier": id}
+        pairing_creds = nj
+        await sendCommand(websocket, "startPair2")
+        #await sendCommand(websocket, "pairCredentials1", nj)
+        atv = pairing_atv
+        print ("pairing atv %s" % (atv))
+        pairing = await pair(atv, Protocol.Companion, loop)
+        active_pairing = pairing
+        await pairing.begin()
+
+    if cmd == "finishPair2":
+        print("finishPair %s" % (data))
+        pairing = active_pairing
+        pairing.pin(data)
+        await pairing.finish()
+        if pairing.has_paired:
+            print("Paired with device!")
+            print("Credentials:", pairing.service.credentials)
+        else:
+            print("Did not pair with device!")
+        pairing_creds["Companion"] = pairing.service.credentials
+        await sendCommand(websocket, "pairCredentials", pairing_creds)
+    
+    
     
     if cmd == "finishPair":
         print("finishPair %s" % (data))
@@ -86,10 +141,30 @@ async def parseRequest(j, websocket):
         nj = {"credentials": creds, "identifier": id}
         await sendCommand(websocket, "pairCredentials", nj)
     
+    if cmd == "settext":
+        text = data["text"]
+        if active_device.keyboard.text_focus_state != pyatv.const.KeyboardFocusState.Focused:
+            return
+        await active_device.keyboard.text_set(text)
+    
+    if cmd == "gettext":
+        print (f"gettext focus compare {active_device.keyboard.text_focus_state} == {pyatv.const.KeyboardFocusState.Focused}", flush=True)
+
+
+        if active_device.keyboard.text_focus_state != pyatv.const.KeyboardFocusState.Focused:
+            return
+        ctext = await active_device.keyboard.text_get()
+        print (f"Current text: {ctext}", flush=True)
+        await sendCommand(websocket, "current-text", ctext)
+    
     if cmd == "connect":
         id = data["identifier"]
         creds = data["credentials"]
         stored_credentials = { Protocol.AirPlay: creds }
+        if "Companion" in data.keys():
+            companion_creds = data["Companion"]
+            stored_credentials[Protocol.Companion] = companion_creds
+        
         print ("stored_credentials %s" % (stored_credentials))
         atvs = await pyatv.scan(loop, identifier=id)
         atv = atvs[0]
@@ -101,6 +176,8 @@ async def parseRequest(j, websocket):
             remote = device.remote_control
             active_device = device
             active_remote = remote
+            kblistener = ATVKeyboardListener()
+            device.keyboard.listener = kblistener
             await sendCommand(websocket, "connected")
         except Exception as ex:
             print ("Failed to connect")
@@ -126,7 +203,7 @@ async def parseRequest(j, websocket):
                 r = await getattr(active_remote, key)()
             else:
                 r = await getattr(active_remote, key)(taction)
-            print (r)
+            #print (r)
 
 async def close_active_device():
     try:
@@ -136,7 +213,7 @@ async def close_active_device():
         print ("Error closing active_device: %s" %(ex))
 
 async def reset_globals():
-    global scan_lookup, pairing_atv, active_pairing, active_device, active_remote
+    global scan_lookup, pairing_atv, active_pairing, active_device, active_remote, active_ws
     print ("Resetting global variables")
     scan_lookup = {}
     
@@ -144,6 +221,7 @@ async def reset_globals():
     active_pairing = False
     active_device = False
     active_remote = False
+    active_ws = False
 
 keep_running = True
 
@@ -183,7 +261,7 @@ async def main(port):
     txt = "%s WebSocket - ATV Server" % (my_name)
     print ("="*width)
     print (txt.center(width))
-    print ("="*width)
+    print ("="*width, flush=True)
     task = asyncio.create_task(check_exit_file())
 
     async with websockets.serve(ws_main, "localhost", port):
