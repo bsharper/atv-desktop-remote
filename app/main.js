@@ -242,7 +242,12 @@ function createWindow() {
 
 function showWindow() {
     secondWindow.hide();
-    app.show();
+    try {
+        app.show();
+    } catch (err) {
+        //console.log(err);
+        // this happens in windows, doesn't seem to affect anything though
+    }
     mb.showWindow();
     setTimeout(() => {
         mb.window.focus();
