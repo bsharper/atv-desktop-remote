@@ -172,7 +172,6 @@ function startServer() {
     var stderr = readline.createInterface({ input: proc.stderr });
 
     stdout.on("line", line => {
-        console.log(line)
         parseLine("stdout", line);
     })
 
