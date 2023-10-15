@@ -18,12 +18,6 @@ body {
     overflow-x: hidden;
 }
 
-
-/* 
-#main {
-    margin-top: 20px;
-} */
-
 a:link,
 a:visited,
 a:hover,
@@ -320,15 +314,6 @@ aside {
     color: white;
 }
 
-
-/* .darkMode .directionCircle.menuButton {
-    border: 2px solid #666;
-}
-
-.directionCircle.menuButton {
-    border: 2px solid black;
-} */
-
 .numberCircle {
     cursor: pointer;
     border-radius: 50%;
@@ -362,3 +347,84 @@ aside {
     background-color: #333;
     color: white;
 } */
+
+
+/* input.html styles */
+
+.large-text-input-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.large-text-input {
+    width: 100%;    
+    padding: 10px 15px;
+    padding-right: 40px; /* To make space for the status emoji */
+    font-size: 24px;
+    border: 2px solid #aaa;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.large-text-input-wrapper::after {
+    content: ''; /* This will be overridden by the status classes */
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    font-size: 24px;
+}
+
+/* .large-text-input-wrapper.bad::after {
+    content: '⚫️';
+    opacity: 0.5;
+} */
+.large-text-input-wrapper.bad::after {
+    content: '⚪️';
+    opacity: 0.5;
+}
+
+.large-text-input-wrapper.good::after {
+    content: '🟢';
+    opacity: 1.0;
+}
+
+.large-text-input:focus {
+    border-color: #0077cc;
+}
+
+.darkMode .large-text-input {
+    color: #fff;
+    border-color: #555;
+    background-color: #222;
+}
+
+.darkMode .large-text-input:focus {
+    border-color: #00aaff;
+}
+
+.info-text {
+    margin-left: 50px;
+    font-size: 0.8em;
+    color: #555;
+}
+
+.darkMode .info-text {
+    margin-left: 50px;
+    font-size: 0.8em;
+    color: #999999;
+}
+
+.info-text-italics {
+    font-style: italic;
+    margin-left: 50px;
+    font-size: 0.8em;
+    color: #555;
+}
+.darkMode .info-text-italics {
+    font-style: italic;
+    margin-left: 50px;
+    font-size: 0.8em;
+    color: #999999;
+}

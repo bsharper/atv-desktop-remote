@@ -125,7 +125,6 @@ async def parseRequest(j, websocket):
         await sendCommand(websocket, "pairCredentials", pairing_creds)
     
     
-    
     if cmd == "finishPair":
         print("finishPair %s" % (data))
         pairing = active_pairing
@@ -140,6 +139,10 @@ async def parseRequest(j, websocket):
         id = pairing_atv.identifier
         nj = {"credentials": creds, "identifier": id}
         await sendCommand(websocket, "pairCredentials", nj)
+
+    if cmd == "kbfocus":
+        kbfocus = active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused
+        await sendCommand(websocket, "kbfocus-status", kbfocus)
     
     if cmd == "settext":
         text = data["text"]

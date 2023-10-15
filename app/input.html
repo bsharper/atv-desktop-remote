@@ -8,36 +8,26 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pure-min.css">
     <link rel="stylesheet" href="css/all.css">
-    <style>
-        .large-text-input {
-            width: 100%;               
-            padding: 10px 15px;        
-            font-size: 24px;           
-            border: 2px solid #aaa;    
-            border-radius: 8px;        
-            outline: none;             
-            
-            transition: border-color 0.3s ease;
-        }
-
-        .large-text-input:focus {
-            border-color: #0077cc;     /* Change the border color on focus */
-        }
-        .info-text {
-            margin-left: 50px;
-            font-style: italic;
-            font-size: 0.8em;
-            color: #555;
-        }
-    </style>
+    <script>
+        window.jQuery = window.$ = require('jquery');
+    </script>
 </head>
 
 <body>
-    <input type="text" id="textInput" class="large-text-input" placeholder="Enter text for search field">
-    <p class="info-text">This will only work if a search field is active on the connected Apple TV.</p>
+    <div class="large-text-input-wrapper green">
+        <input type="text" id="textInput" class="large-text-input" placeholder="Enter text for search field">
+    </div>
+    <p class="info-text-italics">This will only work if a search field is active on the connected Apple TV.</p>
+    <p class="info-text">🟢 = connected device is accepting text input</p>
+    <p class="info-text"><span style="opacity: 0.5">⚪️</span> = connected device does not appear to be accepting text input</p>
+
     <script>
+        const electron = require('electron')
+        const nativeTheme = electron.remote.nativeTheme;
         const { ipcRenderer } = require('electron');
         var textInput = document.getElementById('textInput');
+        var kbHasFocus = false;
+        var kbFocusInterval;
         function debounce(fn, delay) {
             let timeoutID;
 
@@ -52,10 +42,44 @@
             ipcRenderer.send('input-change', textInput.value);
         }
         var sendUpdatedText = debounce(_sendUpdatedText, 100);
+        
+        function handleDarkMode(uimode) {
+            uimode = uimode || localStorage.getItem("uimode") || "systemmode";
+            console.log(`uimode update: ${uimode}`)
+            var alwaysUseDarkMode = (uimode == "darkmode");
+            var neverUseDarkMode = (uimode == "lightmode");
+
+            if ((nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode)) {
+                $("body").addClass("darkMode");
+            } else {
+                $("body").removeClass("darkMode");
+            }
+        }
+        function checkATVInputState() {
+            if (kbFocusInterval) clearInterval(kbFocusInterval);
+            if (! document.hidden) {
+                kbFocusInterval = setInterval(() => {
+                    ipcRenderer.invoke('kbfocus');
+                }, 1000);
+            }
+        }
+
+        ipcRenderer.on('kbfocus-status', (event, arg) => {
+            //console.log(`kbHasFocus: ${arg}`)
+            kbHasFocus = !!(arg);
+            if (kbHasFocus) {
+                $(".large-text-input-wrapper").removeClass("bad").addClass("good");
+            } else {
+                $(".large-text-input-wrapper").removeClass("good").addClass("bad"); 
+            }
+        })
 
         ipcRenderer.on('current-text', (event, arg) => {
             textInput.value = arg;    
         })
+        ipcRenderer.on('uimode', (event, uimode) => {
+            handleDarkMode(uimode);
+        });
         textInput.addEventListener('input', (event) => {
             sendUpdatedText();
         });
@@ -65,8 +89,13 @@
                 ipcRenderer.invoke('closeInputOpenRemote');
             }
         });
+        document.addEventListener('visibilitychange', function() {
+            checkATVInputState();
+        })
         window.onload = function() {
             textInput.focus();
+            handleDarkMode();
+            checkATVInputState();
         };
     </script>
 </body>

@@ -133,6 +133,9 @@ function startWebsocket() {
             console.log(`current text: ${j.data}`)
             ipcRenderer.invoke('current-text', j.data);
         }
+        if (j.command == "kbfocus-status") {
+            ipcRenderer.invoke('kbfocus-status', j.data);
+        }
     });
 }
 

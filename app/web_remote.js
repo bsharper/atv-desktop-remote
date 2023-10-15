@@ -115,6 +115,9 @@ ipcRenderer.on('sendCommand', (event, key) => {
     console.log(`sendCommand from main: ${key}`)
     sendCommand(key);
 })
+ipcRenderer.on('kbfocus', () => {
+    sendMessage('kbfocus')
+})
 
 ipcRenderer.on('wsserver_started', () => {
     ws_server_started();
@@ -143,21 +146,7 @@ window.addEventListener('beforeunload', async e => {
     }
 });
 
-function uuidv4_4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-        .replace(/(x)|(y)|([-4])/g, function(match, p1, p2, p3) {
-            if (p1) return Math.floor(Math.random() * 0xf).toString(16);
-            if (p2) return Math.floor(Math.random() * 4 + 8).toString(16);
-            return p3;
-        });
-}
 
-function runJSMain(code) {
-    var uuid = uuidv4_4()
-    ipcRenderer.once(`response_${uuid}`, (r) => {
-
-    })
-}
 
 function toggleAltText(tf) {
     if (tf) {
@@ -390,13 +379,8 @@ async function sendCommand(k, shifted) {
     } else {
         ws_sendCommand(rcmd)
     }
-    // try {
-    //     await device.sendKeyCommand(atv.AppleTV.Key[rcmd])
-    // } catch (err) {
-    //     console.log('Error sending key', err);
-    //     _connectToATV();
-    // }
 }
+
 function getWorkingPath() {
     return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
 }
@@ -475,36 +459,6 @@ function showKeyMap() {
     }
 }
 
-// function runMainJS(js, handleErrors) {
-//     return new Promise((resolve, reject) => {
-//         function herr(event, err) {
-//             console.log(`runMainJS error response`, err)
-//             wrapup({ result: null, error: err });
-//         }
-
-//         function hresult(event, r) {
-//             console.log('runMainJS result', r)
-//             wrapup({ result: r, error: null });
-//         }
-
-//         function wrapup(r) {
-//             ipcRenderer.off('runJSresult', hresult);
-//             ipcRenderer.off('runJSerror', herr);
-//             if (handleErrors) return resolve(r);
-//             else reject(r.err);
-//         }
-
-//         ipcRenderer.once('runJSresult', hresult)
-//         ipcRenderer.once('runJSerror', herr);
-//         try {
-//             ipcRenderer.invoke('runJS', js);
-//         } catch (err) {
-//             reject(err);
-//         }
-//     })
-
-// }
-
 var connecting = false;
 
 function handleMessage(msg) {
@@ -578,9 +532,11 @@ function handleDarkMode() {
     if ((nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode)) {
         $("body").addClass("darkMode");
         $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
+        ipcRenderer.invoke('uimode', 'darkmode');
     } else {
         $("body").removeClass("darkMode");
         $("#s2style-sheet").attr('href', 'css/select2.min.css')
+        ipcRenderer.invoke('uimode', 'lightmode');
     }
 }
 
