@@ -9,7 +9,7 @@ var secondWindow;
 process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
 const lodash = _ = require('./js/lodash.min');
 const server_runner = require('./server_runner')
-
+const fs = require('fs');
 server_runner.startServer();
 
 // process.on("uncaughtException", server_runner.stopServer);
@@ -259,17 +259,34 @@ app.whenReady().then(() => {
     })
 
     createWindow();
-    // globalShortcut.registerAll(, (a, b, c) => {
-    //     console.log('volume', a, b, c);
-    // })
-    globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
-        if (mb.window.isVisible()) {
-            hideWindow();
+
+    var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
+    if (fs.existsSync(hotkeyPath)) {
+        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
+        if (hotkeys.indexOf(",") > -1) {
+            hotkeys = hotkeys.split(',').map(el => { return el.trim() });
         } else {
-            showWindow();
+            hotkeys = [hotkeys];
         }
-        win.webContents.send('shortcutWin');
-    })
+        console.log(`Registering custom hotkeys: ${hotkeys}`)
+        globalShortcut.registerAll(hotkeys, () => {
+            if (mb.window.isVisible()) {
+                hideWindow();
+            } else {
+                showWindow();
+            }
+            win.webContents.send('shortcutWin');
+        })
+    } else {
+        globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
+            if (mb.window.isVisible()) {
+                hideWindow();
+            } else {
+                showWindow();
+            }
+            win.webContents.send('shortcutWin');
+        })
+    }
     var version = app.getVersion();
     app.setAboutPanelOptions({
         applicationName: "ATV Remote",

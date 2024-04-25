@@ -235,6 +235,7 @@ function checkWSConnection() {
 }
 
 function ws_init() {
+    console.log('ws_init');
     startWebsocket();
     setTimeout(() => {
         // not sure if needed, but server start now tries to install required python packages which can be slow
