@@ -36,6 +36,8 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
 ## Notes
 
-This is cobbled together from a few projects I've worked on. It works well enough for me for daily use, so I figured others might like it.
+This is cobbled together from a few projects I've worked on. It works well enough for me for daily use, so I figured others might like it. 
+
+This project is built using [pyatv.](https://pyatv.dev/)
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/brianharper)
