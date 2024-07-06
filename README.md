@@ -19,7 +19,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 ## Usage
 
  1. All of the keys are mapped to the keyboard when the application is open (pressing return or enter on the keyboard for select, delete for Menu, etc).
- 2. Press `Option` to see what the characters are mapped to when the application is open.
+ 2. Press `Option`, or `Alt` on Windows, to see what the characters are mapped to when the application is open.
 
 
  ## Running
@@ -28,7 +28,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
  2. Run `npm start` or `yarn start`
  3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
  4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
- 5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Ctrl+Shift+R`
+ 5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Win+Shift+R`
 
 ## Building
 
