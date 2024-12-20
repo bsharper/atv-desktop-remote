@@ -226,20 +226,6 @@ window.addEventListener('keydown', e => {
         }
     })
 
-    // console.log(`fnd: ${fnd}`)
-    // if (!fnd) {
-    //     console.log('!!! here')
-
-    //     Object.keys(keymap).forEach(k => {
-    //         if (key == k) {
-    //             fnd = true;
-    //             sendCommand(k);
-    //             e.preventDefault();
-    //             return false;
-    //         }
-    //     })
-    // }
-
 })
 
 function createDropdown(ks) {
