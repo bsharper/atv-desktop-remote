@@ -36,8 +36,6 @@ console.log = function() {
     }
 }
 
-
-
 const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
@@ -49,16 +47,15 @@ if (!gotTheLock) {
     })
 }
 
-
 function createInputWindow() {
-    secondWindow = new BrowserWindow({ 
+    secondWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            enableRemoteModule: true    
+            enableRemoteModule: true
         },
         hide: true,
-        width: 600, 
+        width: 600,
         height: 200,
         minimizable: false,
         maximizable: false
@@ -66,6 +63,7 @@ function createInputWindow() {
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
+        if (mb.window.isAlwaysOnTop()) return;
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
@@ -79,7 +77,7 @@ function createInputWindow() {
 function createWindow() {
     mb = menubar({
         preloadWindow: preloadWindow,
-        showDockIcon: false,
+        showDockIcon: true,
         browserWindow: {
             width: 300,
             height: 500,
@@ -94,10 +92,9 @@ function createWindow() {
     global['MB'] = mb;
     mb.on(readyEvent, () => {
         win = mb.window;
-       
+
         var webContents = win.webContents;
         createInputWindow()
-       
 
         win.on('close', () => {
             console.log('window closed, quitting')
@@ -131,12 +128,11 @@ function createWindow() {
             var tf = arg == "true";
             console.log(`setting alwaysOnTop: ${tf}`)
             mb.window.setAlwaysOnTop(tf);
-            
+
         })
         ipcMain.handle('uimode', (event, arg) => {
             secondWindow.webContents.send('uimode', arg);
         });
-
 
         ipcMain.handle('hideWindow', (event) => {
             console.log('hiding window');
@@ -194,11 +190,8 @@ function createWindow() {
 
 function showWindow() {
     secondWindow.hide();
-    try {
+    if (process.platform === 'darwin') {
         app.show();
-    } catch (err) {
-        //console.log(err);
-        // this happens in windows, doesn't seem to affect anything though
     }
     mb.showWindow();
     setTimeout(() => {
@@ -210,11 +203,8 @@ var showWindowThrottle = lodash.throttle(showWindow, 100);
 
 function hideWindow() {
     mb.hideWindow();
-    try {
+    if (process.platform === 'darwin') {
         app.hide();
-    } catch (err) {
-        // console.log(err);
-        // not sure if this affects windows like app.show does.
     }
 }
 
@@ -251,7 +241,6 @@ function handleVolume() {
 }
 
 app.whenReady().then(() => {
-
     server_runner.testPythonExists().then(r => {
         console.log(`python exists: ${r}`)
     }).catch(err => {
@@ -259,6 +248,17 @@ app.whenReady().then(() => {
     })
 
     createWindow();
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow()
+        }
+    })
+    // did-become-active: show window via macOS App Switcher
+    app.on('did-become-active', () => {
+        if (!win || !secondWindow || win.isDestroyed() || secondWindow.isDestroyed()) return;
+        if (win.isVisible() || secondWindow.isVisible() || win.isAlwaysOnTop()) return;
+        showWindow();
+    })
 
     var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
     if (fs.existsSync(hotkeyPath)) {
@@ -304,11 +304,7 @@ app.on("before-quit", () => {
 })
 
 app.on('window-all-closed', () => {
-    app.quit()
-})
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+    if (process.platform !== 'darwin') {
+        app.quit()
     }
 })
