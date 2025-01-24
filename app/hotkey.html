@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Accelerator / Hotkey</title>
+    <script>
+        window.jQuery = window.$ = require('jquery');
+        require('./js/select2.min.js')($)
+    </script>
+    <link rel="stylesheet" href="css/pure-min.css">
+    <link href="css/select2.min.css" rel="stylesheet" />
+    <style>
+        .hotkeys-container {
+            margin: 20px;
+        }
+        .hotkeys-multiple {
+            width: 300px;
+            height: 200px;
+        }
+        #parsed-hotkeys {
+            width: 300px;
+            padding: 10px;
+    
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .info {
+            font-style: italic;
+            margin: 10px;
+        }
+        #buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="pure-g">
+        <div class="pure-u-1-1">
+       
+            <div class="hotkeys-container">
+                <label for="hotkeys">Accelerator</label>
+                <select id="hotkeys" class="hotkeys-multiple" name="keys[]" multiple="multiple">
+                </select>
+                <label for="parsed-hotkeys">Current Accelerator Value</label>
+                <input type="text" disabled id="parsed-hotkeys" name="parsed-hotkeys" readonly>
+                <div id="buttons">
+                    <button class="pure-button" onclick="saveHotkey()">Save</button>
+                    <button class="pure-button" onclick="closeWindow()">Cancel</button>
+                </div>
+            </div>
+            <div class="info">
+
+                Hotkeys will be registered when this window is closed. For more infromation about hotkeys/accelerators, go to 
+                <a href="#" id="">https://www.electronjs.org/docs/latest/api/accelerator</a><br>
+                The default value is Super+Shift+R
+            </div>
+            </div>
+    </div>
+    <script>
+        const path = require('path');
+        const MYPATH = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
+        const hotkeyPath = path.join(MYPATH, "hotkey.txt")
+        const fs = require('fs');
+        const { remote } = require('electron');
+        
+        function closeWindow() {
+            let window = remote.getCurrentWindow();
+            window.close();
+        }
+        function loadExistingHotkey() {
+            if (fs.existsSync(hotkeyPath)) {
+                var hotkeys = fs.readFileSync(hotkeyPath, 'utf8').trim();
+                $(".hotkeys-multiple").val(hotkeysFromParsed(hotkeys)).trigger("change");
+                return true;
+            }
+            return false;
+        }
+        function saveHotkey() {
+            var hotkeys = $('#parsed-hotkeys').val();
+            if (hotkeys.length === 0) {
+                fs.unlinkSync(hotkeyPath);
+                return;
+            } else {
+                fs.writeFileSync(hotkeyPath, hotkeys);
+            }
+           
+            closeWindow();
+        }
+        function hotkeysFromParsed(parsedHotkeys) {
+            var hotkeys = [];
+            var keys = parsedHotkeys.split('+');
+            keys.forEach(function(key) {
+                if (key.length === 1) {
+                    hotkeys.push(key.toUpperCase());
+                } else {
+                    hotkeys.push(key);
+                }
+            });
+            return hotkeys;
+        }
+
+        $(document).ready(function() {
+            var metaKeys = ["Command", "Cmd", "Control", "Ctrl", "CommandOrControl", "CmdOrCtrl", "Alt", "Option", "AltGr", "Shift", "Super"];
+            metaKeys.forEach(function(key) {
+                var option = document.createElement("option");
+                option.text = key;
+                option.value = key;
+                $('#hotkeys').append(option);
+            });
+
+            // Add uppercase letters A-Z
+            for (var i = 65; i <= 90; i++) {
+                var letter = String.fromCharCode(i);
+                var option = document.createElement("option");
+                option.text = letter;
+                option.value = letter;
+                $('#hotkeys').append(option);
+            }
+
+            // Add numbers 0-9
+            for (var i = 0; i <= 9; i++) {
+                var option = document.createElement("option");
+                option.text = i;
+                option.value = i;
+                $('#hotkeys').append(option);
+            }
+            $('#hotkeys').select2();
+            $('#hotkeys').select2({
+                placeholder: 'Select hotkeys',
+                allowClear: true
+            });
+            $('#hotkeys').on('change', function() {
+                var hotkeys = $(this).val();
+                $('#parsed-hotkeys').val(hotkeys.join('+'));
+            });
+            if (!loadExistingHotkey()) {
+                $("#hotkeys").val(hotkeysFromParsed("Super+Shift+R")).trigger("change");
+            }
+            $("#accellink").click(function() {
+                require('electron').shell.openExternal(this.href);
+                return false;
+            });
+        });
+    </script>
+</body>
+</html>

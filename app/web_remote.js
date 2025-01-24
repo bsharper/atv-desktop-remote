@@ -580,6 +580,10 @@ async function confirmExit() {
     electron.remote.app.quit();
 }
 
+function changeHotkeyClick (event) {
+    ipcRenderer.invoke('loadHotkeyWindow');
+}
+
 function handleContextMenu() {
     let tray = mb.tray
     var mode = localStorage.getItem('uimode') || 'systemmode';
@@ -597,6 +601,7 @@ function handleContextMenu() {
         { role: 'about', label: 'About' },
         { type: 'separator' },
         { label: 'Appearance', submenu: subMenu, click: subMenuClick },
+        { label: 'Change hotkey/accelerator', click: changeHotkeyClick },
         { type: 'separator' },
         { label: 'Quit', click: confirmExit }
     ]);
