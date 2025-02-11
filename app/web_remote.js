@@ -149,6 +149,7 @@ window.addEventListener('beforeunload', async e => {
 
 
 function toggleAltText(tf) {
+    $("#topTextKBLink .keyTextAlt").width($("#topTextKBLink .keyText").width() + "px");
     if (tf) {
         $(".keyText").show();
         $(".keyTextAlt").hide();
