@@ -432,7 +432,7 @@ function submitCode() {
 function showKeyMap() {
     $("#initText").hide();
     $(".directionTable").fadeIn();
-    $("#topTextKBLink").fadeIn();
+    $("#topTextKBLink").show();
     var tvTimer;
     $("[data-key]").off('mousedown mouseup mouseleave');
     $("[data-key]").on('mousedown', function(e) {
