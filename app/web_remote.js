@@ -149,6 +149,7 @@ window.addEventListener('beforeunload', async e => {
 
 
 function toggleAltText(tf) {
+    $("#topTextKBLink .keyTextAlt").width($("#topTextKBLink .keyText").width() + "px");
     if (tf) {
         $(".keyText").show();
         $(".keyTextAlt").hide();
@@ -225,20 +226,6 @@ window.addEventListener('keydown', e => {
             return false;
         }
     })
-
-    // console.log(`fnd: ${fnd}`)
-    // if (!fnd) {
-    //     console.log('!!! here')
-
-    //     Object.keys(keymap).forEach(k => {
-    //         if (key == k) {
-    //             fnd = true;
-    //             sendCommand(k);
-    //             e.preventDefault();
-    //             return false;
-    //         }
-    //     })
-    // }
 
 })
 
@@ -594,6 +581,10 @@ async function confirmExit() {
     electron.remote.app.quit();
 }
 
+function changeHotkeyClick (event) {
+    ipcRenderer.invoke('loadHotkeyWindow');
+}
+
 function handleContextMenu() {
     let tray = mb.tray
     var mode = localStorage.getItem('uimode') || 'systemmode';
@@ -611,6 +602,7 @@ function handleContextMenu() {
         { role: 'about', label: 'About' },
         { type: 'separator' },
         { label: 'Appearance', submenu: subMenu, click: subMenuClick },
+        { label: 'Change hotkey/accelerator', click: changeHotkeyClick },
         { type: 'separator' },
         { label: 'Quit', click: confirmExit }
     ]);

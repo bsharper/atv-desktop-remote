@@ -24,8 +24,43 @@ a:hover,
 a:active {
     color: black;
 }
+
+
 #topTextKBLink {
-    display:none;
+    display: none;
+}
+
+#topTextKBLink a {
+    transition: all 500ms cubic-bezier(0.165, 0.84, 0.44, 1);
+    padding: 10px 20px;
+    font-size: 18px;
+    text-decoration: none;
+    color: black;
+    background-color: #eaeaea; 
+    border: 1px solid black;
+    border-radius: 25px;
+    height:72px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    margin-left: 30px;
+    margin-right: 30px;
+}
+
+
+.darkMode #topTextKBLink a {
+    background-color: #333;
+    color: rgb(200, 200, 200);
+    border: 1px solid white;
+}
+    
+#topTextKBLink a:hover {
+    background-color: #1e1e1e;
+    color: white;
+}
+.darkMode #topTextKBLink a:hover {
+    color: black;
+    background-color: #626262;
 }
 #exitLinkWrapper {
     cursor: pointer;
@@ -58,6 +93,7 @@ a:active {
 }
 
 .simpleButton {
+    transition: all 500ms cubic-bezier(0.165, 0.84, 0.44, 1);
     z-index: 1001;
     cursor: pointer;
     color: black;
@@ -65,6 +101,15 @@ a:active {
     border: 1px solid black;
     border-radius: 10px;
     background-color: white;
+}
+.simpleButton:hover {
+    background-color: #333;
+    color: white;
+}
+
+.darkMode .simpleButton:hover {
+    background-color: white;
+    color: black;
 }
 
 #alwaysOnTopCheck {
@@ -267,8 +312,6 @@ aside {
 
 .directionCircle {
     cursor: pointer;
-    /* box-shadow: 0 0 10px 0px rgba(255, 255, 255, 0); */
-    transition: all 50ms ease;
     border-radius: 50%;
     width: 72px;
     height: 72px;
@@ -279,7 +322,6 @@ aside {
     border: 2px solid #666;
     text-align: center;
     font-size: 18px;
-    /* transition: box-shadow 5s ease; */
     filter: invert(0%);
     transition: all 500ms cubic-bezier(0.165, 0.84, 0.44, 1)
 }
