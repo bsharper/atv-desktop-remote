@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Change Accelerator / Hotkey</title>
+    <title>Change Hotkey</title>
     <script>
         window.jQuery = window.$ = require('jquery');
         require('./js/select2.min.js')($)
@@ -11,17 +11,28 @@
     <link rel="stylesheet" href="css/pure-min.css">
     <link href="css/select2.min.css" rel="stylesheet" />
     <style>
+        body {
+            min-width: 340px;
+        }
         .hotkeys-container {
             margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
         }
         .hotkeys-multiple {
-            width: 300px;
+            width: 100%;
+            min-width: 300px;
             height: 200px;
         }
-        #parsed-hotkeys {
-            width: 300px;
+        #parsed-hotkeys, #all-parsed-hotkeys {
+            width: 100%;
+            min-width: 300px;
             padding: 10px;
-    
+            box-sizing: border-box;
+        }
+        .select2-container {
+            width: 100% !important;
         }
         label {
             display: block;
@@ -44,12 +55,17 @@
         <div class="pure-u-1-1">
        
             <div class="hotkeys-container">
-                <label for="hotkeys">Accelerator</label>
+                <label for="hotkeys">Hotkey</label>
                 <select id="hotkeys" class="hotkeys-multiple" name="keys[]" multiple="multiple">
                 </select>
-                <label for="parsed-hotkeys">Current Accelerator Value</label>
+                <label for="parsed-hotkeys">Current Hotkey Value</label>
                 <input type="text" disabled id="parsed-hotkeys" name="parsed-hotkeys" readonly>
+                <label for="all_hotkeys">All Hotkeys</label>
+                <select id="all_hotkeys" class="hotkeys-multiple" name="allkeys[]" multiple="multiple"></select>
+                <label for="all-parsed-hotkeys">All Hotkeys Value</label>
+                <input type="text" disabled id="all-parsed-hotkeys" name="all-parsed-hotkeys" readonly>
                 <div id="buttons">
+                    <button class="pure-button" onclick="addHotkeys()">Add</button>
                     <button class="pure-button" onclick="saveHotkey()">Save</button>
                     <button class="pure-button" onclick="closeWindow()">Cancel</button>
                 </div>
@@ -57,7 +73,7 @@
             <div class="info">
 
                 Hotkeys will be registered when this window is closed. For more infromation about hotkeys/accelerators, go to 
-                <a href="#" id="">https://www.electronjs.org/docs/latest/api/accelerator</a><br>
+                <a href="https://www.electronjs.org/docs/latest/api/accelerator" id="accellink">https://www.electronjs.org/docs/latest/api/accelerator</a><br>
                 The default value is Super+Shift+R
             </div>
             </div>
@@ -73,25 +89,65 @@
             let window = remote.getCurrentWindow();
             window.close();
         }
+
         function loadExistingHotkey() {
             if (fs.existsSync(hotkeyPath)) {
-                var hotkeys = fs.readFileSync(hotkeyPath, 'utf8').trim();
-                $(".hotkeys-multiple").val(hotkeysFromParsed(hotkeys)).trigger("change");
+                var hotkeysStr = fs.readFileSync(hotkeyPath, 'utf8').trim();
+                var split_hotkeys = hotkeysStr.split(',').map(hk => hk.trim()).filter(hk => hk !== '');
+                split_hotkeys.forEach(function(hk) {
+                    $('#all_hotkeys').append(createOption(hk, hk));
+                });
+                
+                // if(split_hotkeys.length > 0) {
+                //     var firstCombo = split_hotkeys[0].split('+');
+                //     $("#hotkeys").val(firstCombo).trigger("change");
+                // }
+                addHotkeyOption();
                 return true;
             }
             return false;
         }
+
+        function createOption (text, value, selected) {
+            if (typeof selected === 'undefined') {
+                selected = true;
+            }
+            var option = document.createElement("option");
+            option.text = text;
+            option.value = value;
+            option.selected = selected;
+            return option;
+        }
+
+        function addHotkeys() {
+            var combo = $('#parsed-hotkeys').val();
+            if (!combo || combo.trim() === '') {
+                return;
+            }
+            // no dupes
+            if ($('#all_hotkeys option[value="' + combo + '"]').length === 0) {
+                $('#all_hotkeys').append(createOption(combo, combo));
+            }
+            $('#hotkeys').val(null).trigger("change");
+            $('#parsed-hotkeys').val('');
+            addHotkeyOption();
+        }
+        function showAllHotkeys() {
+            var hotkeys = $('#all_hotkeys').val() || [];
+            $('#all-parsed-hotkeys').val(hotkeys.join(','));
+        }
+
         function saveHotkey() {
-            var hotkeys = $('#parsed-hotkeys').val();
+            var hotkeys = $('#all_hotkeys').val() || [];
             if (hotkeys.length === 0) {
                 fs.unlinkSync(hotkeyPath);
-                return;
             } else {
-                fs.writeFileSync(hotkeyPath, hotkeys);
+                
+                fs.writeFileSync(hotkeyPath, hotkeys.join(','));
             }
-           
             closeWindow();
         }
+
         function hotkeysFromParsed(parsedHotkeys) {
             var hotkeys = [];
             var keys = parsedHotkeys.split('+');
@@ -103,6 +159,24 @@
                 }
             });
             return hotkeys;
+        }
+        function _addHotkeyOption() {
+            $('#select2-all_hotkeys-container .select2-selection__choice__display').on('click', function(e) {
+                e.stopPropagation();
+                var hotkey = $(this).text();
+                
+                $('#all_hotkeys').find("option[value='" + hotkey + "']").remove();
+                $('#all_hotkeys').trigger('change');
+                
+                var keys = hotkey.split('+');
+                $('#hotkeys').val(keys).trigger('change');
+            });
+            showAllHotkeys();
+        }
+        function addHotkeyOption() {
+            setTimeout(() => {
+                _addHotkeyOption();
+            }, 10);
         }
 
         $(document).ready(function() {
@@ -132,13 +206,27 @@
             }
             $('#hotkeys').select2();
             $('#hotkeys').select2({
-                placeholder: 'Select hotkeys',
+                placeholder: 'Select keys for combination',
                 allowClear: true
             });
+            
             $('#hotkeys').on('change', function() {
-                var hotkeys = $(this).val();
+                var hotkeys = $(this).val() || [];
                 $('#parsed-hotkeys').val(hotkeys.join('+'));
             });
+            $('#all_hotkeys').select2({
+                placeholder: 'Review your hotkey combinations',
+                tags: true,
+                minimumResultsForSearch: -1
+            });
+            $("#all_hotkeys").on('change', function() {
+                showAllHotkeys();
+            });
+            
+            $('#all_hotkeys').on('select2:opening', function(e) {
+                e.preventDefault();
+            });
+            
             if (!loadExistingHotkey()) {
                 $("#hotkeys").val(hotkeysFromParsed("Super+Shift+R")).trigger("change");
             }

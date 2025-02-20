@@ -1,17 +1,31 @@
 var atv_credentials = false;
 var lodash = _ = require('./js/lodash.min');
 var pairDevice = "";
-var electron = require('electron')
-var remote = electron.remote;
-var dialog = remote.dialog;
+var electron = require('electron');
 var ipcRenderer = electron.ipcRenderer;
-var mb = remote.getGlobal('MB');
-const { Menu, MenuItem } = remote
+var nativeTheme;
+var remote;
+var dialog;
+// Initialize remote after document is ready
+var mb;
+var Menu, MenuItem
+function initializeRemote() {
+    try {
+        remote = require('@electron/remote');
+        nativeTheme = remote.nativeTheme;
+        dialog = remote.dialog;
+        Menu = remote.Menu;
+        MenuItem = remote.MenuItem;
+        mb = remote.getGlobal('MB');
+        return true;
+    } catch (err) {
+        console.error('Failed to initialize remote:', err);
+        return false;
+    }
+}
+
+
 const path = require('path');
-//var atv = electron.remote.require('./remote').atv;
-//var NowPlayingInfo = atv.NowPlayingInfo;
-var nativeTheme = electron.remote.nativeTheme;
-var dialog = electron.remote.dialog;
 var device = false;
 var qPresses = 0;
 var playstate = false;
@@ -84,48 +98,50 @@ const keyDesc = {
     't': 'TV Button',
     'l': 'Long-press TV Button'
 }
-
-ipcRenderer.on('shortcutWin', (event) => {
-    toggleAltText(true);
-})
-
-ipcRenderer.on('scanDevicesResult', (event, ks) => {
-    createDropdown(ks);
-})
-
-ipcRenderer.on('pairCredentials', (event, arg) => {
-    saveRemote(pairDevice, arg);
-    localStorage.setItem('atvcreds', JSON.stringify(getCreds(pairDevice)));
-    connectToATV();
-})
-
-ipcRenderer.on('gotStartPair', () => {
-    console.log('gotStartPair');
-})
-
-ipcRenderer.on('mainLog', (event, txt) => {
-    console.log('[ main ] %s', txt.substring(0, txt.length - 1));
-})
-
-ipcRenderer.on('powerResume', (event, arg) => {
-    connectToATV();
-})
-
-ipcRenderer.on('sendCommand', (event, key) => {
-    console.log(`sendCommand from main: ${key}`)
-    sendCommand(key);
-})
-ipcRenderer.on('kbfocus', () => {
-    sendMessage('kbfocus')
-})
-
-ipcRenderer.on('wsserver_started', () => {
-    ws_server_started();
-})
-
-ipcRenderer.on('input-change', (event, data) => {
-    sendMessage("settext", {text: data});
-});
+function initIPC() {
+    ipcRenderer.on('shortcutWin', (event) => {
+        toggleAltText(true);
+    })
+    
+    ipcRenderer.on('scanDevicesResult', (event, ks) => {
+        createDropdown(ks);
+    })
+    
+    ipcRenderer.on('pairCredentials', (event, arg) => {
+        saveRemote(pairDevice, arg);
+        localStorage.setItem('atvcreds', JSON.stringify(getCreds(pairDevice)));
+        connectToATV();
+    })
+    
+    ipcRenderer.on('gotStartPair', () => {
+        console.log('gotStartPair');
+    })
+    
+    ipcRenderer.on('mainLog', (event, txt) => {
+        console.log('[ main ] %s', txt.substring(0, txt.length - 1));
+    })
+    
+    ipcRenderer.on('powerResume', (event, arg) => {
+        connectToATV();
+    })
+    
+    ipcRenderer.on('sendCommand', (event, key) => {
+        console.log(`sendCommand from main: ${key}`)
+        sendCommand(key);
+    })
+    ipcRenderer.on('kbfocus', () => {
+        sendMessage('kbfocus')
+    })
+    
+    ipcRenderer.on('wsserver_started', () => {
+        ws_server_started();
+    })
+    
+    ipcRenderer.on('input-change', (event, data) => {
+        sendMessage("settext", {text: data});
+    });
+    
+}
 
 window.addEventListener('blur', e => {
     toggleAltText(true);
@@ -211,7 +227,9 @@ window.addEventListener('keydown', e => {
         return;
     }
     if (!isConnected()) {
+        console.log(`pairCode: ${key}`);
         if ($("#pairCode").is(':focus') && key == 'Enter') {
+            
             submitCode();
         }
         return;
@@ -415,6 +433,7 @@ function submitCode() {
 function showKeyMap() {
     $("#initText").hide();
     $(".directionTable").fadeIn();
+    $("#topTextKBLink").fadeIn();
     var tvTimer;
     $("[data-key]").off('mousedown mouseup mouseleave');
     $("[data-key]").on('mousedown', function(e) {
@@ -500,9 +519,10 @@ function setStatus(txt) {
 function startScan() {
     $("#initText").hide();
     $("#loader").fadeIn();
+    $("#topTextKBLink").hide();
     $("#addNewElements").show();
     $("#runningElements").hide();
-    mb.showWindow();
+    //mb.showWindow();
     $("#atvDropdownContainer").html("");
     setStatus("Please wait, scanning...")
     $("#pairingLoader").html(getLoader());
@@ -602,7 +622,7 @@ function handleContextMenu() {
         { role: 'about', label: 'About' },
         { type: 'separator' },
         { label: 'Appearance', submenu: subMenu, click: subMenuClick },
-        { label: 'Change hotkey/accelerator', click: changeHotkeyClick },
+        { label: 'Change hotkey', click: changeHotkeyClick },
         { type: 'separator' },
         { label: 'Quit', click: confirmExit }
     ]);
@@ -621,8 +641,24 @@ async function helpMessage() {
     await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
 }
 
+function timeoutAsync(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
+// Modify the init function to handle remote initialization
 async function init() {
+    if (!initializeRemote()) {
+        console.log('Remote not ready, retrying in 100ms...');
+        await timeoutAsync(100);
+        return await init();
+    }
+
+    // if (!sessionStorage.getItem('firstRun')) {
+    //     sessionStorage.setItem('firstRun', 'false');
+    //     await timeoutAsync(100);
+    //     return await init();
+    // }
+    
     handleDarkMode();
     handleContextMenu();
     $("#exitLink").on('click', () => {
@@ -681,13 +717,22 @@ function themeUpdated() {
     console.log('theme style updated');
     handleDarkMode();
 }
-try {
-    nativeTheme.removeAllListeners();
-} catch (err) {}
-nativeTheme.on('updated', themeUpdated);
 
 $(function() {
+    // Remove the early remote listener removal
+    try {
+        if (nativeTheme) {
+            nativeTheme.removeAllListeners();
+            nativeTheme.on('updated', themeUpdated);
+        }
+    } catch (err) {
+        console.log('nativeTheme not ready yet');
+    }
+    
+    initIPC();
     var wp = getWorkingPath();
-    $("#workingPathSpan").html(`<strong>${wp}</strong>`)
-    ipcRenderer.invoke('isWSRunning')
+    $("#workingPathSpan").html(`<strong>${wp}</strong>`);
+    ipcRenderer.invoke('isWSRunning');
 })
+
+// ...existing code...
