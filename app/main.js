@@ -86,6 +86,7 @@ function createInputWindow() {
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
+        secondWindow.webContents.send('closeInputWindow');
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
@@ -178,7 +179,9 @@ function createWindow() {
             showWindow();
         })
         ipcMain.handle('openInputWindow', (event, arg) => {
+            console.log('openInputWindow');
             secondWindow.show();
+            secondWindow.webContents.send('openInputWindow');
         });
         ipcMain.handle('current-text', (event, arg) => {
             console.log('current-text', arg);
