@@ -165,7 +165,7 @@ window.addEventListener('beforeunload', async e => {
 
 
 function toggleAltText(tf) {
-    $("#topTextKBLink .keyTextAlt").width($("#topTextKBLink .keyText").width() + "px");
+    //$("#topTextKBLink .keyTextAlt").width($("#topTextKBLink .keyText").width() + "px");
     if (tf) {
         $(".keyText").show();
         $(".keyTextAlt").hide();
@@ -227,9 +227,7 @@ window.addEventListener('keydown', e => {
         return;
     }
     if (!isConnected()) {
-        console.log(`pairCode: ${key}`);
         if ($("#pairCode").is(':focus') && key == 'Enter') {
-            
             submitCode();
         }
         return;
@@ -407,6 +405,7 @@ async function askQuestion(msg) {
 
 
 function startPairing(dev) {
+    atv_connected = false;
     $("#initText").hide();
     //setStatus("Enter the pairing code");
     $("#results").hide();
