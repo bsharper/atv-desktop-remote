@@ -23,8 +23,6 @@
             <div class="pure-u-1-2">
                 <div id="alwaysOnTopWrapper">
                     <span class="keyTextAlt">H - hide window</span>
-                    <!-- <input id="alwaysOnTopCheck" type="checkbox" href="javascript:;">
-                    <label for="alwaysOnTopCheck">Always on-top</label> -->
                 </div>
             </div>
             <div class="pure-u-1-2">
@@ -32,28 +30,26 @@
                     <button id="exitLink" class="simpleButton"><span class="keyText">Quit</span><span class="keyTextAlt">Q (3x)</span></button>
                 </div>
             </div>
-            <div class="pure-u-1-1">
-                <div class="center">
-                    <h2 class="topText"><span id="topTextHeader">ATV Remote</span>
-                        <span id="topTextKBLink">
-                            <a href="#" onclick="openKeyboardClick(event)">
-                                <span style="display:inline-block">
-                                    <span class="keyText">Open Keyboard</span>
-                                    <span class="keyTextAlt">K</span>
-                                </span>
-                            </a>
-                        </span>    
-                    </h2>
-                    <div id="initText"> 
-                        <p>If this is the first time this program has started, please be patient. It may take up to five minutes to get set up.</p>
-                        <p>The Python library <strong>pyatv</strong> is being installed in the directory:</p>
-                        <p><span id="workingPathSpan"></span></p>
-                        <p>This only happens the first time the program is run, it will normally start much more quickly.</p>
-                        <p>If you see this message after waiting 5 minutes, review the <strong>atv_pip_install.log</strong> file in the directory above.</p>
-                        <div style="text-align:center">
-                            <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
-                        </div>
+        </div>
+        <div class="center">
+            <div class="topText">
+                <span id="topTextHeader">ATV Remote</span>
+            </div>
+                <div id="topTextKBLink">
+                    <div onclick="openKeyboardClick(event)">
+                        <span class="keyTextAlt">K</span>
+                        <span class="keyText">Open Keyboard</span>
                     </div>
+                </div>    
+            
+            <div id="initText"> 
+                <p>If this is the first time this program has started, please be patient. It may take up to five minutes to get set up.</p>
+                <p>The Python library <strong>pyatv</strong> is being installed in the directory:</p>
+                <p><span id="workingPathSpan"></span></p>
+                <p>This only happens the first time the program is run, it will normally start much more quickly.</p>
+                <p>If you see this message after waiting 5 minutes, review the <strong>atv_pip_install.log</strong> file in the directory above.</p>
+                <div style="text-align:center">
+                    <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
                 </div>
             </div>
         </div>

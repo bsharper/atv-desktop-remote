@@ -24,11 +24,13 @@
     <script>
         document.hidden = true;
         const electron = require('electron')
-        const nativeTheme = electron.remote.nativeTheme;
+        const remote = require('@electron/remote');
+        const nativeTheme = remote.nativeTheme;
         const { ipcRenderer } = require('electron');
         var textInput = document.getElementById('textInput');
         var kbHasFocus = false;
         var kbFocusInterval;
+        var windowOpened = false;
         function debounce(fn, delay) {
             let timeoutID;
 
@@ -57,13 +59,16 @@
             }
         }
         function checkATVInputState() {
+            console.log(`checkATVInputState: ${windowOpened}`)
             if (kbFocusInterval) clearInterval(kbFocusInterval);
-            if ((! document.hidden) && (document.activeElement == textInput)) {
-                kbFocusInterval = setInterval(() => {
-                    
-                    ipcRenderer.invoke('kbfocus');
-                }, 1000);
-            }
+            
+            kbFocusInterval = setInterval(() => {
+                if (! windowOpened) {
+                    clearInterval(kbFocusInterval);
+                    return;
+                }
+                ipcRenderer.invoke('kbfocus');
+            }, 1000);
         }
 
         ipcRenderer.on('kbfocus-status', (event, arg) => {
@@ -82,6 +87,16 @@
         ipcRenderer.on('uimode', (event, uimode) => {
             handleDarkMode(uimode);
         });
+        ipcRenderer.on('openInputWindow', (event, arg) => {
+            console.log('openInputWindow')
+            windowOpened = true;
+            textInput.focus();
+            checkATVInputState();
+        });
+        ipcRenderer.on('closeInputWindow', (event, arg) => {
+            windowOpened = false;
+            if (kbFocusInterval) clearInterval(kbFocusInterval);
+        });
         textInput.addEventListener('input', (event) => {
             sendUpdatedText();
         });
@@ -89,15 +104,17 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape' || event.key === 'Enter') {
                 ipcRenderer.invoke('closeInputOpenRemote');
+                windowOpened = false;
+                if (kbFocusInterval) clearInterval(kbFocusInterval);
             }
         });
         document.addEventListener('visibilitychange', function() {
-            checkATVInputState();
+            //checkATVInputState();
         })
         window.onload = function() {
             textInput.focus();
             handleDarkMode();
-            checkATVInputState();
+            //checkATVInputState();
         };
     </script>
 </body>

@@ -3,6 +3,7 @@ var win;
 const { ipcMain } = require('electron')
 const path = require('path');
 //const remote = require('./remote')
+require('@electron/remote/main').initialize()
 const menubar = require('menubar').menubar;
 const util = require('util');
 var secondWindow;
@@ -50,14 +51,15 @@ if (!gotTheLock) {
 }
 function createHotkeyWindow() {
     hotkeyWindow = new BrowserWindow({
-        width: 400,
-        height: 400,
+        width: 500,
+        height: 500,
         webPreferences: {
             nodeIntegration: true,
             enableRemoteModule: true,
             contextIsolation: false
         }
     });
+    require("@electron/remote/main").enable(hotkeyWindow.webContents);
     hotkeyWindow.loadFile('hotkey.html');
     hotkeyWindow.setMenu(null);
     hotkeyWindow.on('close', (event) => {
@@ -80,9 +82,11 @@ function createInputWindow() {
         minimizable: false,
         maximizable: false
     });
+    require("@electron/remote/main").enable(secondWindow.webContents);
     secondWindow.loadFile('input.html');
     secondWindow.on('close', (event) => {
         event.preventDefault();
+        secondWindow.webContents.send('closeInputWindow');
         showWindowThrottle();
     });
     secondWindow.on("blur", () => {
@@ -110,6 +114,7 @@ function createWindow() {
     })
     global['MB'] = mb;
     mb.on(readyEvent, () => {
+        require("@electron/remote/main").enable(mb.window.webContents);
         win = mb.window;
        
         var webContents = win.webContents;
@@ -174,7 +179,9 @@ function createWindow() {
             showWindow();
         })
         ipcMain.handle('openInputWindow', (event, arg) => {
+            console.log('openInputWindow');
             secondWindow.show();
+            secondWindow.webContents.send('openInputWindow');
         });
         ipcMain.handle('current-text', (event, arg) => {
             console.log('current-text', arg);
@@ -285,15 +292,32 @@ function registerHotkeys() {
             hotkeys = [hotkeys];
         }
         console.log(`Registering custom hotkeys: ${hotkeys}`)
-        var ret = globalShortcut.registerAll(hotkeys, () => {
-            if (mb.window.isVisible()) {
-                hideWindow();
-            } else {
-                showWindow();
-            }
-            win.webContents.send('shortcutWin');
+        var errs = hotkeys.map(hotkey => {
+            console.log(`Registering hotkey: ${hotkey}`)
+            return globalShortcut.register(hotkey, () => {
+                if (mb.window.isVisible()) {
+                    hideWindow();
+                } else {
+                    showWindow();
+                }
+                win.webContents.send('shortcutWin');
+            })
         })
+        // var ret = globalShortcut.registerAll(hotkeys, () => {
+        //     if (mb.window.isVisible()) {
+        //         hideWindow();
+        //     } else {
+        //         showWindow();
+        //     }
+        //     win.webContents.send('shortcutWin');
+        // })
+        var ret = errs.every(el => { return el });
         if (!ret) {
+            errs.forEach((err, idx) => {
+                if (!err) {
+                    console.log(`Error registering hotkey: ${hotkeys[idx]}`)
+                }
+            })
             console.log(`Error registering hotkeys: ${hotkeys}`)
         } else {
             registered =true;
