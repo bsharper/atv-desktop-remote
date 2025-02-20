@@ -141,6 +141,8 @@ async def parseRequest(j, websocket):
         await sendCommand(websocket, "pairCredentials", nj)
 
     if cmd == "kbfocus":
+        if not active_device:
+            return
         kbfocus = active_device.keyboard.text_focus_state == pyatv.const.KeyboardFocusState.Focused
         await sendCommand(websocket, "kbfocus-status", kbfocus)
     
@@ -152,8 +154,6 @@ async def parseRequest(j, websocket):
     
     if cmd == "gettext":
         print (f"gettext focus compare {active_device.keyboard.text_focus_state} == {pyatv.const.KeyboardFocusState.Focused}", flush=True)
-
-
         if active_device.keyboard.text_focus_state != pyatv.const.KeyboardFocusState.Focused:
             return
         ctext = await active_device.keyboard.text_get()
@@ -269,8 +269,6 @@ async def main(port):
 
     async with websockets.serve(ws_main, "localhost", port):
         try:
-            # while keep_running:
-            #     await asyncio.sleep(1)
             await asyncio.Future()  # run forever
         except Exception as ex:
             print (ex)

@@ -48,7 +48,24 @@ if (!gotTheLock) {
         showWindow();
     })
 }
-
+function createHotkeyWindow() {
+    hotkeyWindow = new BrowserWindow({
+        width: 400,
+        height: 400,
+        webPreferences: {
+            nodeIntegration: true,
+            enableRemoteModule: true,
+            contextIsolation: false
+        }
+    });
+    hotkeyWindow.loadFile('hotkey.html');
+    hotkeyWindow.setMenu(null);
+    hotkeyWindow.on('close', (event) => {
+        event.preventDefault();
+        hotkeyWindow.hide();
+        registerHotkeys();
+    });
+}
 
 function createInputWindow() {
     secondWindow = new BrowserWindow({ 
@@ -120,7 +137,9 @@ function createWindow() {
             console.log('Received input:', data);
             win.webContents.send('input-change', data);
         });
-
+        ipcMain.handle("loadHotkeyWindow", (event) => {
+            createHotkeyWindow();
+        })
         ipcMain.handle('debug', (event, arg) => {
             console.log(`ipcDebug: ${arg}`)
         })
@@ -250,6 +269,48 @@ function handleVolume() {
         })
     })
 }
+function registerHotkeys() {
+    var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
+    try {
+        globalShortcut.unregisterAll();
+    } catch (err) {
+        console.log(`Error unregistering hotkeys: ${err}`)
+    } 
+    var registered = false;   
+    if (fs.existsSync(hotkeyPath)) {
+        
+        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
+        if (hotkeys.indexOf(",") > -1) {
+            hotkeys = hotkeys.split(',').map(el => { return el.trim() });
+        } else {
+            hotkeys = [hotkeys];
+        }
+        console.log(`Registering custom hotkeys: ${hotkeys}`)
+        var ret = globalShortcut.registerAll(hotkeys, () => {
+            if (mb.window.isVisible()) {
+                hideWindow();
+            } else {
+                showWindow();
+            }
+            win.webContents.send('shortcutWin');
+        })
+        if (!ret) {
+            console.log(`Error registering hotkeys: ${hotkeys}`)
+        } else {
+            registered =true;
+        }
+    } 
+    if (!registered) {
+        globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
+            if (mb.window.isVisible()) {
+                hideWindow();
+            } else {
+                showWindow();
+            }
+            win.webContents.send('shortcutWin');
+        })
+    }
+}
 
 app.whenReady().then(() => {
 
@@ -260,41 +321,15 @@ app.whenReady().then(() => {
     })
 
     createWindow();
-
-    var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
-    if (fs.existsSync(hotkeyPath)) {
-        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
-        if (hotkeys.indexOf(",") > -1) {
-            hotkeys = hotkeys.split(',').map(el => { return el.trim() });
-        } else {
-            hotkeys = [hotkeys];
-        }
-        console.log(`Registering custom hotkeys: ${hotkeys}`)
-        globalShortcut.registerAll(hotkeys, () => {
-            if (mb.window.isVisible()) {
-                hideWindow();
-            } else {
-                showWindow();
-            }
-            win.webContents.send('shortcutWin');
-        })
-    } else {
-        globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
-            if (mb.window.isVisible()) {
-                hideWindow();
-            } else {
-                showWindow();
-            }
-            win.webContents.send('shortcutWin');
-        })
-    }
+    registerHotkeys();
+   
     var version = app.getVersion();
     app.setAboutPanelOptions({
         applicationName: "ATV Remote",
         applicationVersion: version,
         version: version,
         credits: "Brian Harper",
-        copyright: "Copyright 2022",
+        copyright: "Copyright 2025",
         website: "https://github.com/bsharper",
         iconPath: "./images/full.png"
     });

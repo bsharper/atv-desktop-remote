@@ -1,25 +1,28 @@
 @echo off
-cd "%~dp0"
+set INSTALL_LOG=atv_pip_install.log
+set MY_PATH=%~dp0
+cd /d %MY_PATH%
 
-IF NOT EXIST env (
+if not exist env (
+    echo ATVRemote - Python install started %DATE% %TIME% >> %INSTALL_LOG%
     echo > setting_up_python
-    python -m venv env
+    python -m venv env >> %INSTALL_LOG% 2>&1
     call env\Scripts\activate.bat
-    pip install --upgrade pip
-) ELSE (
+    python -m pip install --upgrade pip >> %INSTALL_LOG% 2>&1
+    python -m pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+    echo ATVRemote - Python install ended %DATE% %TIME% >> %INSTALL_LOG%
+    echo ================================================== >> %INSTALL_LOG%
+) else (
     call env\Scripts\activate.bat
 )
 
-:: Killing process wsserver.py
-FOR /F "tokens=2 delims=," %%i IN ('tasklist /nh /fi "imagename eq python.exe" /fo csv ^| findstr /i "wsserver.py"') DO (
-    echo Killing process: %%i
-    taskkill /PID %%i
+:kill_proc
+for /f "tokens=2 delims= " %%A in ('tasklist /FI "IMAGENAME eq python.exe" /NH') do (
+    tasklist /FI "WINDOWTITLE eq wsserver.py" | findstr wsserver.py >nul
+    if not errorlevel 1 (
+        echo Killing %%A
+        taskkill /PID %%A /F
+    )
 )
-
-pip install -q websockets pyatv
-
-IF EXIST setting_up_python (
-    del setting_up_python
-)
-
+if exist setting_up_python del setting_up_python
 python wsserver.py
