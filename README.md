@@ -1,7 +1,7 @@
 # ATV Desktop Remote
 A simple menubar app that allows you to control an Apple TV from your desktop
 
- ![What this application looks like when running in either light or dark mode](screenshot.png)
+ ![What this application looks like when running in either light or dark mode](screenshot_new.png)
 
  ## Update: Keyboard input works 
  
