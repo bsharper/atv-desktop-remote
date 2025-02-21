@@ -51,22 +51,23 @@ a:active {
     color: white;
     background-color: #5f5f5f;
     border: 2px solid #d1d1d1;
-    transform: translateY(2px); /* Shifts the button down slightly */
-    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3); /* Creates an inset shadow for a pressed look */
+    transform: translateY(2px);
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
 }
 
 .darkMode #topTextKBLink {
-    background-color: #333; /* Darker background for dark mode */
-    border: 2px solid #aaa; /* Lighter border for contrast */
-    color: #f2f2f2; /* Lighter text color */
-    box-shadow: 2px 2px 5px rgba(255, 255, 255, 0.2); /* Subtle light shadow */
+    background-color: #333; 
+    border: 2px solid #aaa; 
+    color: #f2f2f2; 
+    box-shadow: 2px 2px 5px rgba(255, 255, 255, 0.2); 
 }
 
 .darkMode #topTextKBLink:hover {
-    background-color: #222; /* Even darker background on hover */
-    border: 2px solid #ccc; /* Adjusted border on hover */
-    transform: translateY(2px); /* Same pressed effect */
-    box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.3); /* Inset light shadow for a pressed look */
+    background-color: #5f5f5f;
+    border: 2px solid #ccc; 
+    transform: translateY(2px); 
+    color: black;
+    box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.3);
 }
 
 #exitLinkWrapper {
@@ -393,13 +394,6 @@ aside {
 }
 
 
-/* .darkMode .select2-container {
-    background-color: #333;
-    color: white;
-} */
-
-
-/* input.html styles */
 
 .large-text-input-wrapper {
     position: relative;
@@ -418,7 +412,7 @@ aside {
 }
 
 .large-text-input-wrapper::after {
-    content: ''; /* This will be overridden by the status classes */
+    content: ''; 
     position: absolute;
     top: 50%;
     right: 15px;
