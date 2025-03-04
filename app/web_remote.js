@@ -17,6 +17,7 @@ function initializeRemote() {
         Menu = remote.Menu;
         MenuItem = remote.MenuItem;
         mb = remote.getGlobal('MB');
+        electron.remote = remote;
         return true;
     } catch (err) {
         console.error('Failed to initialize remote:', err);
@@ -140,7 +141,6 @@ function initIPC() {
     ipcRenderer.on('input-change', (event, data) => {
         sendMessage("settext", {text: data});
     });
-    
 }
 
 window.addEventListener('blur', e => {
@@ -535,7 +535,9 @@ function handleDarkMode() {
     var alwaysUseDarkMode = (uimode == "darkmode");
     var neverUseDarkMode = (uimode == "lightmode");
 
-    if ((nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode)) {
+    var darkModeEnabled = (nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode);
+    console.log(`darkModeEnabled: ${darkModeEnabled}`)
+    if (darkModeEnabled) {
         $("body").addClass("darkMode");
         $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
         ipcRenderer.invoke('uimode', 'darkmode');
@@ -596,8 +598,7 @@ function subMenuClick(event) {
 }
 
 async function confirmExit() {
-    // I decided against this, this behavior annoys me in other programs
-    electron.remote.app.quit();
+    remote.app.quit();
 }
 
 function changeHotkeyClick (event) {
@@ -651,6 +652,7 @@ async function init() {
         await timeoutAsync(100);
         return await init();
     }
+    addThemeListener();
 
     // if (!sessionStorage.getItem('firstRun')) {
     //     sessionStorage.setItem('firstRun', 'false');
@@ -716,9 +718,9 @@ function themeUpdated() {
     console.log('theme style updated');
     handleDarkMode();
 }
+var tryThemeAddCount = 0;
 
-$(function() {
-    // Remove the early remote listener removal
+function addThemeListener() {
     try {
         if (nativeTheme) {
             nativeTheme.removeAllListeners();
@@ -726,12 +728,16 @@ $(function() {
         }
     } catch (err) {
         console.log('nativeTheme not ready yet');
+        setTimeout(() => {
+            tryThemeAddCount++;
+            if (tryThemeAddCount < 10) addThemeListener();
+        }, 1000);
     }
-    
+}
+
+$(function() {    
     initIPC();
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`);
     ipcRenderer.invoke('isWSRunning');
 })
-
-// ...existing code...
