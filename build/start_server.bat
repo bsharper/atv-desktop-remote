@@ -7,7 +7,7 @@ if not exist env (
     echo ATVRemote - Python install started %DATE% %TIME% >> %INSTALL_LOG%
     echo > setting_up_python
     
-    REM Check if uv is installed (it's much faster)
+    REM Check if uv is installed
     where uv >nul 2>&1
     if not errorlevel 1 (
         echo Using uv for virtual environment setup >> %INSTALL_LOG%

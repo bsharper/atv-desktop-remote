@@ -101,6 +101,7 @@ const keyDesc = {
 }
 function initIPC() {
     ipcRenderer.on('shortcutWin', (event) => {
+        handleDarkMode();
         toggleAltText(true);
     })
     
@@ -653,13 +654,6 @@ async function init() {
         return await init();
     }
     addThemeListener();
-
-    // if (!sessionStorage.getItem('firstRun')) {
-    //     sessionStorage.setItem('firstRun', 'false');
-    //     await timeoutAsync(100);
-    //     return await init();
-    // }
-    
     handleDarkMode();
     handleContextMenu();
     $("#exitLink").on('click', () => {

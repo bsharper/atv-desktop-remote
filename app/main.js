@@ -2,7 +2,6 @@ const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcu
 var win;
 const { ipcMain } = require('electron')
 const path = require('path');
-//const remote = require('./remote')
 require('@electron/remote/main').initialize()
 const menubar = require('menubar').menubar;
 const util = require('util');
@@ -13,9 +12,7 @@ const server_runner = require('./server_runner')
 const fs = require('fs');
 server_runner.startServer();
 
-// process.on("uncaughtException", server_runner.stopServer);
-// process.on("SIGINT", server_runner.stopServer);
-// process.on("SIGTERM", server_runner.stopServer);
+
 global["server_runner"] = server_runner;
 
 const preloadWindow = true;

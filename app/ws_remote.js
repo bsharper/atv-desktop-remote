@@ -242,12 +242,11 @@ function ws_init() {
         ws_watchdog = setInterval(() => {
             checkWSConnection()
         }, 5000);
-    }, 15000)
+    }, 120000) // bump this up to 2 minutes
 
 }
 
 function incReady() {
-    //console.log('incReady');
     readyCount++;
     if (readyCount == 2) ws_init();
 }
