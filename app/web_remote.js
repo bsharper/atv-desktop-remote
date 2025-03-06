@@ -532,20 +532,25 @@ function startScan() {
 
 
 function handleDarkMode() {
-    var uimode = localStorage.getItem("uimode") || "systemmode";
-    var alwaysUseDarkMode = (uimode == "darkmode");
-    var neverUseDarkMode = (uimode == "lightmode");
-
-    var darkModeEnabled = (nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode);
-    console.log(`darkModeEnabled: ${darkModeEnabled}`)
-    if (darkModeEnabled) {
-        $("body").addClass("darkMode");
-        $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
-        ipcRenderer.invoke('uimode', 'darkmode');
-    } else {
-        $("body").removeClass("darkMode");
-        $("#s2style-sheet").attr('href', 'css/select2.min.css')
-        ipcRenderer.invoke('uimode', 'lightmode');
+    try {
+        if (!nativeTheme) return;
+        var uimode = localStorage.getItem("uimode") || "systemmode";
+        var alwaysUseDarkMode = (uimode == "darkmode");
+        var neverUseDarkMode = (uimode == "lightmode");
+    
+        var darkModeEnabled = (nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode);
+        console.log(`darkModeEnabled: ${darkModeEnabled}`)
+        if (darkModeEnabled) {
+            $("body").addClass("darkMode");
+            $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
+            ipcRenderer.invoke('uimode', 'darkmode');
+        } else {
+            $("body").removeClass("darkMode");
+            $("#s2style-sheet").attr('href', 'css/select2.min.css')
+            ipcRenderer.invoke('uimode', 'lightmode');
+        }
+    } catch (err) {
+        console.log('Error setting dark mode:', err);
     }
 }
 
