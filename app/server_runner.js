@@ -17,11 +17,6 @@ var serverRunning = false;
 
 function getWorkingPath() {
     return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
-    // if (process.env['MYPATH']) return process.env['MYPATH'];
-    // var rp = process.resourcesPath;
-    // if (!rp && process.argv.length > 1) rp = path.resolve(process.argv[1]);
-    // else rp = process.env['PWD'];
-    // return rp
 }
 
 function fileExists(fn) {
@@ -95,9 +90,19 @@ var announceServerStart = debounce(_announceServerStart, 200);
 function testPythonExists() {
     return new Promise((resolve, reject) => {
         exec("python3 -V", (err, stdout, stderr) => {
-            if (err) return reject(err);
-            var txt = stdout.replace(/\n/g, '').trim();
-            resolve(txt);
+            if (err) {
+                exec("python -V", (err, stdout, stderr) => {
+                    if (err) {
+                        return reject(err);
+                    } else {
+                        var txt = stdout.replace(/\n/g, '').trim();
+                        resolve(txt);
+                    }
+                });
+            } else {
+                var txt = stdout.replace(/\n/g, '').trim();
+                resolve(txt);
+            }    
         })
     })
 }
@@ -105,7 +110,7 @@ function testPythonExists() {
 async function pythonExists() {
     try {
         var r = await testPythonExists();
-        return true;
+        return r;
     } catch (err) {
         return false;
     }
@@ -140,6 +145,7 @@ function stopServer() {
 
 function writeSupportFiles() {
     var wpath = getWorkingPath();
+    if (!fileExistsSync(wpath)) fs.mkdirSync(wpath);
     Object.keys(sfiles).forEach(fn => {
         var txt = sfiles[fn];
         var out_path = path.join(wpath, fn);

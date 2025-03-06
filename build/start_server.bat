@@ -6,10 +6,22 @@ cd /d %MY_PATH%
 if not exist env (
     echo ATVRemote - Python install started %DATE% %TIME% >> %INSTALL_LOG%
     echo > setting_up_python
-    python -m venv env >> %INSTALL_LOG% 2>&1
-    call env\Scripts\activate.bat
-    python -m pip install --upgrade pip >> %INSTALL_LOG% 2>&1
-    python -m pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+    
+    REM Check if uv is installed (it's much faster)
+    where uv >nul 2>&1
+    if not errorlevel 1 (
+        echo Using uv for virtual environment setup >> %INSTALL_LOG%
+        uv venv env >> %INSTALL_LOG% 2>&1
+        call env\Scripts\activate.bat
+        uv pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+    ) else (
+        echo Using standard Python venv >> %INSTALL_LOG%
+        python -m venv env >> %INSTALL_LOG% 2>&1
+        call env\Scripts\activate.bat
+        python -m pip install --upgrade pip >> %INSTALL_LOG% 2>&1
+        python -m pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+    )
+
     echo ATVRemote - Python install ended %DATE% %TIME% >> %INSTALL_LOG%
     echo ================================================== >> %INSTALL_LOG%
 ) else (
