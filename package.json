@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "1.3.6",
+    "version": "1.3.7",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
@@ -8,11 +8,12 @@
         "productName": "ATV Remote",
         "appId": "com.electron.atvMacRemote",
         "mac": {
-            "category": "public.app-category.utilities"
-        },
-        "extraFiles": [
-            "server/wsserver.py"
-        ]
+            "category": "public.app-category.utilities",
+	     "hardenedRuntime": true,
+      	     "gatekeeperAssess": false,
+             "entitlements": "build/entitlements.mac.plist",
+             "entitlementsInherit": "build/entitlements.mac.plist"
+        }
     },
     "scripts": {
         "embed": "node build/create_python_embed.js --overwrite",
