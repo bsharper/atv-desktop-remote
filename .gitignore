@@ -8,3 +8,4 @@ old
 pytest
 build/pyscripts.js
 stopserver
+.env*
