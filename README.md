@@ -7,7 +7,7 @@ A simple menubar app that allows you to control an Apple TV from your desktop
 
 If you have homebrew installed `brew install atv-remote`
 
-macOS and Windows version can be downloaded from here: https://github.com/bsharper/atv-desktop-remote/releases
+macOS and Windows versions can be downloaded from here: https://github.com/bsharper/atv-desktop-remote/releases
 
 
 ## Usage
