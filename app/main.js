@@ -107,7 +107,8 @@ function createWindow() {
                 enableRemoteModule: true,
                 contextIsolation: false
             }
-        }
+        },
+        windowPosition: "center"
     })
     global['MB'] = mb;
     mb.on(readyEvent, () => {
