@@ -1,4 +1,4 @@
-const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, webContents } = require('electron')
+const { app, BrowserWindow, powerMonitor, Tray, Menu, nativeImage, globalShortcut, webContents, dialog } = require('electron')
 var win;
 const { ipcMain } = require('electron')
 const path = require('path');
@@ -10,7 +10,22 @@ process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'd
 const lodash = _ = require('./js/lodash.min');
 const server_runner = require('./server_runner')
 const fs = require('fs');
+
 server_runner.startServer();
+server_runner.server_events.on("stopped", (code, signal, errorLogs, maxRestartsReached) => {
+    if (signal === "SIGINT" || signal === "SIGTERM") return;
+
+    let errorMessage = `Server exited with error code ${code} ${signal ? `and signal ${signal}` : ''}`;
+    if (errorLogs) {
+        errorMessage += "\n\nError details:\n" + errorLogs.slice(-20).join("\n");
+    }
+
+    if (maxRestartsReached) {
+        errorMessage = "Server failed to start after multiple attempts.\n\n" + errorMessage;
+        dialog.showErrorBox("Server Error - Max Restarts Reached", errorMessage);
+        setTimeout(() => app.exit(1), 100);
+    }
+});
 
 
 global["server_runner"] = server_runner;
@@ -144,8 +159,8 @@ function createWindow() {
         ipcMain.handle('debug', (event, arg) => {
             console.log(`ipcDebug: ${arg}`)
         })
-        ipcMain.handle('quit', event => {
-            server_runner.stopServer();
+        ipcMain.handle('quit', async event => {
+            await server_runner.stopServer();
             app.exit()
         });
         ipcMain.handle('alwaysOnTop', (event, arg) => {
@@ -166,11 +181,7 @@ function createWindow() {
         ipcMain.handle('isProduction', (event) => {
             return (!process.defaultApp);
         });
-        ipcMain.handle('isWSRunning', (event, arg) => {
-            console.log('isWSRunning');
-            if (server_runner.isServerRunning()) win.webContents.send('wsserver_started')
-        })
-        
+
         ipcMain.handle('closeInputOpenRemote', (event, arg) => {
             console.log('closeInputOpenRemote');
             showWindow();
@@ -355,8 +366,8 @@ app.whenReady().then(() => {
     });
 })
 
-app.on("before-quit", () => {
-    server_runner.stopServer();
+app.on("before-quit", async () => {
+    await server_runner.stopServer();
 })
 
 app.on('window-all-closed', () => {

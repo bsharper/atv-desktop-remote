@@ -9,11 +9,16 @@ const path = require('path')
 const sfiles = require('./pyscripts').files;
 
 var server_events = new EventEmitter();
-var proc = false;
-
+var proc = null;
 var showOutputs = false;
 var serverRunning = false;
+let errorBuffer = [];
+let isShuttingDown = false;
 
+// Track restart attempts
+let restartCount = 0;
+const MAX_RESTARTS = 3;  // Maximum number of restart attempts
+const RESTART_TIMEOUT = 5000;  // Time to wait before restart
 
 function getWorkingPath() {
     return path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
@@ -47,6 +52,17 @@ function debounce(func, timeout = 300) {
     };
 }
 
+async function gracefulShutdown() {
+    console.log('Attempting graceful shutdown...');
+    try {
+        await killServer();
+        return true;
+    } catch (err) {
+        console.log('Graceful shutdown failed, using fallback...');
+        return false;
+    }
+}
+
 function killServer() {
     console.log('killServer');
     return new Promise((resolve, reject) => {
@@ -67,20 +83,9 @@ function killServer() {
     })
 }
 
-async function stopServerFile() {
-    var stopFilePath = path.join(getWorkingPath(), "stopserver");
-    await fsp.writeFile(stopFilePath, "stop");
-    console.log('stopserver written');
-}
-
-function stopServerFileSync() {
-    var stopFilePath = path.join(getWorkingPath(), "stopserver");
-    fs.writeFileSync(stopFilePath, "stop");
-}
-
 function _announceServerStart() {
-    // debounce to allow multiple interfaces to bind
     serverRunning = true;
+    restartCount = 0; // Reset restart count on successful start
     server_events.emit("started");
     console.log(`Server started ${proc.pid}`)
 }
@@ -116,31 +121,46 @@ async function pythonExists() {
     }
 }
 
-
 function parseLine(streamName, line) {
     if (!serverRunning && line.indexOf("server listening on") > -1) {
         announceServerStart();
     }
+    if (streamName === "stderr") {
+        errorBuffer.push(line);
+    }
     if (showOutputs) console.log(`SERVER.${streamName}: ${line}`)
 }
 
-function stopServer() {
+async function stopServer() {
+    if (isShuttingDown) return; // Prevent multiple shutdown attempts
+    isShuttingDown = true;
     serverRunning = false;
-    try {
-        if (proc) proc.removeAllListeners();
-    } catch (e) {}
-    stopServerFileSync();
-    if (proc && !proc.killed) {
-        try {
-            proc.kill()
-        } catch (e) {}
-        setImmediate(() => {
-            try {
-                if (!proc.killed) proc.kill('SIGINT');
-            } catch (e) {}
-            proc = false;
-        })
+
+    if (!proc) {
+        isShuttingDown = false;
+        return;
     }
+
+    try {
+        proc.removeAllListeners();
+    } catch (e) {}
+
+    try {
+        // Try graceful shutdown first
+        const gracefulSuccess = await gracefulShutdown();
+        if (!gracefulSuccess && proc && !proc.killed) {
+            proc.kill(); // Regular SIGTERM
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (proc && !proc.killed) {
+                proc.kill('SIGKILL'); // Force kill if still running
+            }
+        }
+    } catch (e) {
+        console.error('Error during server shutdown:', e);
+    }
+
+    proc = null;
+    isShuttingDown = false;
 }
 
 function writeSupportFiles() {
@@ -157,13 +177,21 @@ function writeSupportFiles() {
     })
 }
 
+async function startServer() {
+    // Reset state if server isn't actually running
+    if (!proc || proc.killed) {
+        serverRunning = false;
+        isShuttingDown = false;
+    }
 
-function startServer() {
+    if (serverRunning || isShuttingDown) {
+        console.log('Server already running or shutting down, skipping start');
+        return;
+    }
+
     var wpath = getWorkingPath();
     var noWriteFiles = path.join(wpath, "skip_file_write");
     if (!fileExistsSync(noWriteFiles)) writeSupportFiles();
-    stopServer();
-
 
     if (process.platform == "win32") {
         var bat_path = path.join(wpath, 'start_server.bat')
@@ -176,6 +204,7 @@ function startServer() {
 
     var stdout = readline.createInterface({ input: proc.stdout });
     var stderr = readline.createInterface({ input: proc.stderr });
+    errorBuffer = [];
 
     stdout.on("line", line => {
         parseLine("stdout", line);
@@ -185,12 +214,33 @@ function startServer() {
         parseLine("stderr", line)
     })
 
-    proc.on('exit', (code, signal) => {
+    function handleServerExit(code, signal) {
         serverRunning = false;
-        server_events.emit("stopped", code);
-        console.log(`Server exited with code ${code}`)
-    });
+        proc = null;  // Clear the process reference
 
+        // Don't attempt restart if shutting down or killed intentionally
+        if (isShuttingDown || signal === 'SIGTERM' || signal === 'SIGKILL') {
+            server_events.emit("stopped", code, signal, errorBuffer);
+            return;
+        }
+
+        // Handle unexpected exits
+        if (restartCount < MAX_RESTARTS) {
+            console.log(`Server exited unexpectedly. Attempting restart ${restartCount + 1}/${MAX_RESTARTS}...`);
+            restartCount++;
+            setTimeout(() => startServer(), RESTART_TIMEOUT);
+        } else {
+            console.log('Max restart attempts reached');
+            server_events.emit("stopped", code, signal, errorBuffer, true); // true indicates max restarts reached
+        }
+    }
+
+    proc.on('exit', handleServerExit);
+
+    proc.on('error', (err) => {
+        console.error('Failed to start server process:', err);
+        handleServerExit(1, null);
+    });
 }
 
 function setShowOutputs(tf) {
