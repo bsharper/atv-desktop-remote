@@ -13,13 +13,26 @@ if not exist env (
         echo Using uv for virtual environment setup >> %INSTALL_LOG%
         uv venv env >> %INSTALL_LOG% 2>&1
         call env\Scripts\activate.bat
-        uv pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+        if exist requirements.txt (
+            echo Installing from requirements.txt >> %INSTALL_LOG%
+            uv pip install -r requirements.txt >> %INSTALL_LOG% 2>&1
+        ) else (
+            echo Installing websockets and pyatv >> %INSTALL_LOG%
+            uv pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+        )
     ) else (
         echo Using standard Python venv >> %INSTALL_LOG%
         python -m venv env >> %INSTALL_LOG% 2>&1
         call env\Scripts\activate.bat
         python -m pip install --upgrade pip >> %INSTALL_LOG% 2>&1
-        python -m pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+        if exist requirements.txt (
+            echo Installing from requirements.txt >> %INSTALL_LOG%
+            python -m pip install -r requirements.txt >> %INSTALL_LOG% 2>&1
+        ) else (
+            echo Installing websockets and pyatv >> %INSTALL_LOG%
+            python -m pip install websockets pyatv >> %INSTALL_LOG% 2>&1
+        )
+        
     )
 
     echo ATVRemote - Python install ended %DATE% %TIME% >> %INSTALL_LOG%

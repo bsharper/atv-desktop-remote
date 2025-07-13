@@ -12,13 +12,26 @@ if [[ ! -d env ]]; then
         echo "Using uv for virtual environment setup" >> $INSTALL_LOG
         uv venv env | tee -a $INSTALL_LOG
         source env/bin/activate
-        uv pip install websockets pyatv | tee -a $INSTALL_LOG
+        if [[ -f requirements.txt ]]; then
+            echo "Installing from requirements.txt" >> $INSTALL_LOG
+            uv pip install -r requirements.txt | tee -a $INSTALL_LOG
+        else
+            echo "Installing websockets and pyatv" >> $INSTALL_LOG
+            uv pip install websockets pyatv | tee -a $INSTALL_LOG
+        fi
+        
     else
         echo "Using standard Python venv" >> $INSTALL_LOG
         python3 -m venv env | tee -a $INSTALL_LOG
         source env/bin/activate
         python -m pip install --upgrade pip | tee -a $INSTALL_LOG
-        python -m pip install websockets pyatv | tee -a $INSTALL_LOG
+        if [[ -f requirements.txt ]]; then
+            echo "Installing from requirements.txt" >> $INSTALL_LOG
+            python -m pip install -r requirements.txt | tee -a $INSTALL_LOG
+        else
+            echo "Installing websockets and pyatv" >> $INSTALL_LOG
+            python -m pip install websockets pyatv | tee -a $INSTALL_LOG
+        fi
     fi
     
     dt=$(date)
