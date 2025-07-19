@@ -27,6 +27,7 @@ except RuntimeError:
     asyncio.set_event_loop(loop)
 
 scan_lookup = {}
+filter_atvs = True # Should only return ATVs and not other device types (HomePods, Macs, etc)
 pairing_atv = False
 active_pairing = False
 active_device = False
@@ -74,6 +75,8 @@ async def parseRequest(j, websocket):
         atvs = await pyatv.scan(loop)
         ar = []
         scan_lookup = {}
+        if filter_atvs:
+            atvs = [ "TV" in x.device_info.model_str for x in atvs]
         for atv in atvs:
             txt = f"{atv.name} ({atv.address})"
             ar.append(txt)
