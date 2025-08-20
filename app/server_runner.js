@@ -159,6 +159,10 @@ function writeSupportFiles() {
 
 
 function startServer() {
+    // only for testing - this bypasses the server start (assumes you are running the server manually)
+    // announceServerStart();
+    // return;
+
     var wpath = getWorkingPath();
     var noWriteFiles = path.join(wpath, "skip_file_write");
     if (!fileExistsSync(noWriteFiles)) writeSupportFiles();

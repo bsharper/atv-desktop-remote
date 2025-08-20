@@ -10,7 +10,7 @@ import random
 import asyncio
 from pyatv.const import InputAction
 from pyatv import const as pyatv_const
-import websockets.server
+import websockets
 
 import logging
 logger = logging.getLogger('websockets')
@@ -59,19 +59,33 @@ class ATVConnectionListener(interface.DeviceListener):
     
     def connection_lost(self, exception):
         """Called when connection is lost."""
+        global active_device, active_remote, current_config, active_ws
         print(f"Connection lost: {exception}", flush=True)
-        if active_ws:
-            try:
-                loop.run_until_complete(sendCommand(active_ws, "connection_lost"))
-            except Exception as ex:
-                print(f"Failed to notify client of connection loss: {ex}", flush=True)
         
-        # Attempt automatic reconnection
-        loop.create_task(attempt_reconnection())
+        # Only attempt reconnection if we have a valid config and were previously connected
+        if current_config and active_device and active_remote:
+            if active_ws:
+                try:
+                    loop.run_until_complete(sendCommand(active_ws, "connection_lost"))
+                except Exception as ex:
+                    print(f"Failed to notify client of connection loss: {ex}", flush=True)
+            
+            # Attempt automatic reconnection in background
+            loop.create_task(attempt_reconnection())
+        else:
+            # No valid config to reconnect with, just reset state
+            active_device = False
+            active_remote = False
     
     def connection_closed(self):
         """Called when connection is closed."""
+        global active_device, active_remote, active_ws
         print("Connection closed", flush=True)
+        
+        # Don't attempt reconnection on clean close - user likely disconnected intentionally
+        active_device = False
+        active_remote = False
+        
         if active_ws:
             try:
                 loop.run_until_complete(sendCommand(active_ws, "connection_closed"))
@@ -107,11 +121,22 @@ async def attempt_reconnection():
         print("No config available for reconnection", flush=True)
         return False
     
+    # Don't attempt reconnection if we're in the middle of pairing
+    if active_pairing or pairing_atv:
+        print("Skipping reconnection - pairing in progress", flush=True)
+        return False
+    
     try:
         print("Attempting automatic reconnection...", flush=True)
         
-        # Close old connection
-        await close_active_device()
+        # Close old connection first
+        if active_device:
+            try:
+                await active_device.close()
+            except:
+                pass
+        active_device = False
+        active_remote = False
         
         # Reconnect using stored config
         device = await pyatv.connect(current_config, loop)
@@ -134,6 +159,8 @@ async def attempt_reconnection():
         
     except Exception as ex:
         print(f"Automatic reconnection failed: {ex}", flush=True)
+        active_device = False
+        active_remote = False
         
         if active_ws:
             await sendCommand(active_ws, "reconnection_failed")
@@ -172,7 +199,7 @@ async def parseRequest(j, websocket):
         ar = []
         scan_lookup = {}
         if filter_atvs:
-            atvs = [ "TV" in x.device_info.model_str for x in atvs]
+            atvs = [x for x in atvs if "TV" in x.device_info.model_str]
         for atv in atvs:
             txt = f"{atv.name} ({atv.address})"
             ar.append(txt)
@@ -281,26 +308,29 @@ async def parseRequest(j, websocket):
             
         atv = atvs[0]
         
+        # Set up credentials on the scanned config
+        for protocol, credentials in stored_credentials.items():
+            print ("Setting protocol %s with credentials %s" % (str(protocol), credentials))
+            atv.set_credentials(protocol, credentials)
+            
         try:
-            # Set up credentials on the scanned config
-            for protocol, credentials in stored_credentials.items():
-                atv.set_credentials(protocol, credentials)
-            
-            # Store config for reconnection
-            global current_config
-            current_config = atv
-            
-            # Connect to device (pyatv has built-in connection management)
+            # Connect to device
             device = await pyatv.connect(atv, loop)
             remote = device.remote_control
             active_device = device
             active_remote = remote
             
-            # Set up all listeners
-            device.listener = ATVConnectionListener()
-            device.power.listener = ATVPowerListener()
+            # Store config for potential reconnection (only after successful connection)
+            global current_config
+            current_config = atv
+            
+            # Set up keyboard listener
             kblistener = ATVKeyboardListener()
             device.keyboard.listener = kblistener
+            
+            # Set up connection and power listeners (only after successful connection)
+            device.listener = ATVConnectionListener()
+            device.power.listener = ATVPowerListener()
             
             await sendCommand(websocket, "connected")
             
@@ -366,7 +396,7 @@ async def reset_globals():
     active_device = False
     active_remote = False
     active_ws = False
-    current_config = None
+    current_config = None  # Clear config to prevent unwanted reconnection attempts
 
 keep_running = True
 
@@ -390,8 +420,6 @@ async def check_exit_file():
 
 async def ws_main(websocket):
     global active_ws
-    #await reset_globals()
-    await close_active_device()
     active_ws = websocket
     
     try:
@@ -410,12 +438,10 @@ async def ws_main(websocket):
         else:
             print(f"WebSocket error: {ex}", flush=True)
     finally:
-        # Clean up when client disconnects
+        # Clean up when client disconnects but keep Apple TV connection alive
         if active_ws == websocket:
             active_ws = False
-            # Optionally keep the Apple TV connection alive for reconnecting clients
-            # If you prefer to close it, uncomment the next line:
-            # await close_active_device()
+            # Don't close the Apple TV connection - keep it alive for reconnecting clients
 
 async def main(port):
     global keep_running
