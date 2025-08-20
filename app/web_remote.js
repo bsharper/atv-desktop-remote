@@ -434,27 +434,115 @@ function showKeyMap() {
     $("#initText").hide();
     $(".directionTable").fadeIn();
     $("#topTextKBLink").show();
-    var tvTimer;
+    
+    var longPressTimers = {};
+    var longPressProgress = {};
+    var isLongPressing = {};
+    
     $("[data-key]").off('mousedown mouseup mouseleave');
+    
     $("[data-key]").on('mousedown', function(e) {
         var key = $(this).data('key');
-        if (key == "Tv") {
-            tvTimer = setTimeout(() => {
-                tvTimer = false;
-                sendCommand('LongTv')
-            }, 1000);
-        } else {
-            sendCommand(key);
+        var $button = $(this);
+        
+        if (longPressTimers[key]) {
+            clearTimeout(longPressTimers[key]);
+            clearInterval(longPressProgress[key]);
+        }
+        
+        var progressValue = 0;
+        isLongPressing[key] = true;
+        
+        $button.addClass('pressing');
+        longPressProgress[key] = setInterval(() => {
+            if (!isLongPressing[key]) return;
+            
+            progressValue += 2;    
+            var progressPercent = Math.min(progressValue, 100);
+            var radiusPercent = 100 - progressPercent;
+
+            var computedStyle = window.getComputedStyle($button[0]);
+            var bgColor = computedStyle.backgroundColor;
+            
+            if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+                var isDarkMode = $('body').hasClass('darkMode');
+                bgColor = isDarkMode ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+            }
+            
+            $button.css('background', `radial-gradient(circle, transparent ${radiusPercent}%, ${bgColor} ${radiusPercent}%)`);            
+
+            var scale = 1 + (progressPercent * 0.001);
+            $button.css('transform', `scale(${scale})`);
+            
+        }, 20); 
+
+        longPressTimers[key] = setTimeout(() => {
+            if (!isLongPressing[key]) return;
+            
+            clearInterval(longPressProgress[key]);
+
+            $button.addClass('longpress-triggered');
+
+            var computedStyle = window.getComputedStyle($button[0]);
+            var successColor = computedStyle.backgroundColor;
+            
+            if (successColor === 'rgba(0, 0, 0, 0)' || successColor === 'transparent') {
+                var isDarkMode = $('body').hasClass('darkMode');
+                successColor = isDarkMode ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+            }
+            
+            $button.css('background', successColor);
+            
+            console.log(`Long press triggered for: ${key}`);
+            sendCommand(key, true); // true indicates long press
+            
+            isLongPressing[key] = false;
+            
+            setTimeout(() => {
+                $button.removeClass('pressing longpress-triggered');
+                $button.css({
+                    'background': '',
+                    'transform': ''
+                });
+            }, 200);
+            
+        }, 1000); // 1 second for long press
+    });
+    
+    $("[data-key]").on('mouseup mouseleave', function(e) {
+        var key = $(this).data('key');
+        var $button = $(this);
+        
+        // If we're not in a long press state, this is a regular click
+        if (isLongPressing[key]) {
+            
+            if (longPressTimers[key]) {
+                clearTimeout(longPressTimers[key]);
+                longPressTimers[key] = null;
+            }
+            if (longPressProgress[key]) {
+                clearInterval(longPressProgress[key]);
+                longPressProgress[key] = null;
+            }
+            
+            // Reset state
+            isLongPressing[key] = false;
+            
+            // Reset styles
+            $button.removeClass('pressing');
+            $button.css({
+                'background': '',
+                'transform': ''
+            });
+            
+            
+            if (e.type === 'mouseup') {
+                console.log(`Regular click for: ${key}`);
+                sendCommand(key, false); // false = "not shifted" = regular click
+            }
         }
     });
-    $(`[data-key="Tv"]`).on('mouseup mouseleave', function(e) {
-        var key = $(this).data('key');
-        if (!tvTimer) return; // already send long press
-        clearTimeout(tvTimer);
-        tvTimer = false;
-        if (e.type == 'mouseleave') return;
-        sendCommand('Tv');
-    });
+    
     var creds = _getCreds();
     if (Object.keys(creds).indexOf("Companion") > -1) {
         $("#topTextHeader").hide();

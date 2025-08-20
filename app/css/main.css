@@ -319,6 +319,30 @@ aside {
     display: none;
 }
 
+.keyText {
+    color: inherit;
+}
+
+.darkMode .keyText {
+    color: white;
+}
+
+[data-key]:hover .keyText {
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.8), 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.darkMode [data-key]:hover .keyText {
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+[data-key].pressing .keyText {
+    text-shadow: none !important; 
+}
+
+.darkMode [data-key].pressing .keyText {
+    text-shadow: none !important;
+}
+
 .directionCircle {
     cursor: pointer;
     border-radius: 50%;
@@ -387,6 +411,30 @@ aside {
 .keymapDiv {
     display: flex;
     justify-content: space-evenly;
+}
+
+[data-key] {
+    transition: transform 0.1s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+[data-key].longpress-triggered {
+    animation: longpress-flash 0.3s ease;
+}
+
+.darkMode [data-key].longpress-triggered {
+    animation: longpress-flash-dark 0.3s ease;
+}
+
+@keyframes longpress-flash {
+    0% { box-shadow: 0 0 20px rgba(100,150,255,0.8); }
+    100% { box-shadow: 0 0 5px rgba(100,150,255,0.3); }
+}
+
+@keyframes longpress-flash-dark {
+    0% { box-shadow: 0 0 20px rgba(150,200,255,0.8); }
+    100% { box-shadow: 0 0 5px rgba(150,200,255,0.3); }
 }
 
 .volumeKeys {
