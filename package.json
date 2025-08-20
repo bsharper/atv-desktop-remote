@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
