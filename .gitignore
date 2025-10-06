@@ -10,3 +10,4 @@ build/pyscripts.js
 stopserver
 .env*
 pyatv
+old_dist
