@@ -69,10 +69,10 @@ const keymap = {
     'ArrowRight': 'Right',
     'ArrowUp': 'Up',
     'ArrowDown': 'Down',
-    'w': "Up",
-    's': "Down",
-    'a': "Left",
-    'd': "Right",
+    'w': 'Up',
+    's': 'Down',
+    'a': 'Left',
+    'd': 'Right',
     'Enter': 'Select',
     'Space': (latv) => {
         var v = latv.playing;
@@ -85,7 +85,7 @@ const keymap = {
     },
     'Backspace': 'Menu',
     'Escape': 'Menu',
-    '<': 'Menu",
+    '<': 'Menu',
     'Next': 'Next',
     'Previous': 'Previous',
     'n': 'Next',
@@ -94,8 +94,8 @@ const keymap = {
     '[': 'Previous',
     't': 'Tv',
     'l': 'LongTv',
-    'PageUp': "VolumeUp",
-    'PageDown': "VolumeDown"
+    'PageUp': 'VolumeUp',
+    'PageDown': 'VolumeDown'
 }
 
 const niceButtons = {
