@@ -37,21 +37,31 @@ const ws_keymap = {
     "ArrowDown": "down",
     "ArrowLeft": "left",
     "ArrowRight": "right",
+    "w": "up",
+    "s": "down",
+    "a": "left",
+    "d": "right",
     "t": "home",
     "l": "home_hold",
     "Backspace": "menu",
     "Escape": "menu",
+    "<": "menu",
     "Space": "play_pause",
+    ">": "play_pause",
     "Enter": "select",
     "Previous": "skip_backward",
     "Next": "skip_forward",
     "[": "skip_backward",
     "]": "skip_forward",
+    "z": "skip_backward",
+    "x": "skip_forward",
     "g": "top_menu",
     "+": "volume_up",
     "=": "volume_up",
     "-": "volume_down",
-    "_": "volume_down"
+    "_": "volume_down",
+    "PageUp": "volume_up",
+    "PageDown": "volume_down"
 }
 
 const keymap = {
@@ -59,6 +69,10 @@ const keymap = {
     'ArrowRight': 'Right',
     'ArrowUp': 'Up',
     'ArrowDown': 'Down',
+    'w': 'Up',
+    's': 'Down',
+    'a': 'Left',
+    'd': 'Right',
     'Enter': 'Select',
     'Space': (latv) => {
         var v = latv.playing;
@@ -71,6 +85,7 @@ const keymap = {
     },
     'Backspace': 'Menu',
     'Escape': 'Menu',
+    '<': 'Menu',
     'Next': 'Next',
     'Previous': 'Previous',
     'n': 'Next',
@@ -78,7 +93,9 @@ const keymap = {
     ']': 'Next',
     '[': 'Previous',
     't': 'Tv',
-    'l': 'LongTv'
+    'l': 'LongTv',
+    'PageUp': 'VolumeUp',
+    'PageDown': 'VolumeDown'
 }
 
 const niceButtons = {
