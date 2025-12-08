@@ -13,13 +13,17 @@
     </script>
 </head>
 
-<body>
-    <div class="large-text-input-wrapper green">
-        <input type="text" id="textInput" class="large-text-input" placeholder="Enter text for search field">
+<body class="input-page">
+    <div class="input-panel">
+        <div class="large-text-input-wrapper green">
+            <input type="text" id="textInput" class="large-text-input" placeholder="Enter text for search field" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="input-help">
+            <p class="info-text-italics">This will only work if a search field is active on the connected Apple TV.</p>
+            <p class="info-text">🟢 = connected device is accepting text input</p>
+            <p class="info-text"><span style="opacity: 0.5">⚪️</span> = connected device does not appear to be accepting text input</p>
+        </div>
     </div>
-    <p class="info-text-italics">This will only work if a search field is active on the connected Apple TV.</p>
-    <p class="info-text">🟢 = connected device is accepting text input</p>
-    <p class="info-text"><span style="opacity: 0.5">⚪️</span> = connected device does not appear to be accepting text input</p>
 
     <script>
         document.hidden = true;
@@ -59,16 +63,22 @@
             }
         }
         function checkATVInputState() {
-            console.log(`checkATVInputState: ${windowOpened}`)
-            if (kbFocusInterval) clearInterval(kbFocusInterval);
-            
+            startFocusPolling();
+        }
+
+        function startFocusPolling() {
+            stopFocusPolling();
             kbFocusInterval = setInterval(() => {
-                if (! windowOpened) {
-                    clearInterval(kbFocusInterval);
-                    return;
-                }
+                if (!windowOpened || document.hidden) return;
                 ipcRenderer.invoke('kbfocus');
-            }, 1000);
+            }, 2000);
+        }
+
+        function stopFocusPolling() {
+            if (kbFocusInterval) {
+                clearInterval(kbFocusInterval);
+                kbFocusInterval = null;
+            }
         }
 
         ipcRenderer.on('kbfocus-status', (event, arg) => {
@@ -95,7 +105,7 @@
         });
         ipcRenderer.on('closeInputWindow', (event, arg) => {
             windowOpened = false;
-            if (kbFocusInterval) clearInterval(kbFocusInterval);
+            stopFocusPolling();
         });
         textInput.addEventListener('input', (event) => {
             sendUpdatedText();
@@ -105,12 +115,18 @@
             if (event.key === 'Escape' || event.key === 'Enter') {
                 ipcRenderer.invoke('closeInputOpenRemote');
                 windowOpened = false;
-                if (kbFocusInterval) clearInterval(kbFocusInterval);
+                stopFocusPolling();
             }
         });
         document.addEventListener('visibilitychange', function() {
-            //checkATVInputState();
+            if (document.hidden) {
+                stopFocusPolling();
+            } else if (windowOpened) {
+                startFocusPolling();
+            }
         })
+        window.addEventListener('blur', stopFocusPolling);
+        window.addEventListener('beforeunload', stopFocusPolling);
         window.onload = function() {
             textInput.focus();
             handleDarkMode();
@@ -119,4 +135,3 @@
     </script>
 </body>
 </html>
-

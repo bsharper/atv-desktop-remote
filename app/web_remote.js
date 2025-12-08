@@ -6,6 +6,7 @@ var ipcRenderer = electron.ipcRenderer;
 var nativeTheme;
 var remote;
 var dialog;
+var resizeTimer;
 // Initialize remote after document is ready
 var mb;
 var Menu, MenuItem
@@ -176,6 +177,27 @@ function toggleAltText(tf) {
     }
 }
 
+function resizeWindowToContent() {
+    try {
+        if (!remote) return;
+        const currentWindow = remote.getCurrentWindow();
+        if (!currentWindow) return;
+        const contentWidth = Math.ceil(document.documentElement.scrollWidth);
+        const contentHeight = Math.ceil(document.documentElement.scrollHeight);
+        const [currentWidth] = currentWindow.getContentSize();
+        currentWindow.setContentSize(Math.max(currentWidth, contentWidth), contentHeight);
+    } catch (err) {
+        console.log('resizeWindowToContent error', err);
+    }
+}
+
+function scheduleResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeWindowToContent, 120);
+}
+
+window.addEventListener('resize', scheduleResize);
+
 function openKeyboardClick(event) {
     event.preventDefault();
     openKeyboard();
@@ -305,9 +327,8 @@ function createATVDropdown() {
         text: 'Pair another remote'
     })
     var txt = "";
-    txt += `<span class='ctText'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>`
     txt += `<select id="remoteDropdown"></select>`
-    $("#atvDropdownContainer").html(txt);
+    $("#atvDropdownContainerTop").html(txt);
     $("#remoteDropdown").select2({
         data: ar,
         placeholder: 'Select a remote',
@@ -334,7 +355,7 @@ function createATVDropdown() {
 
 function showAndFade(text) {
     $("#cmdFade").html(text)
-    $("#cmdFade").stop(true).fadeOut(0).css({ "visibility": "visible" }).fadeIn(200).delay(800).fadeOut(function() {
+    $("#cmdFade").stop(true).fadeOut(0).css({ "visibility": "visible" }).fadeIn(100).delay(400).fadeOut(200, function() {
         $(this).css({ "display": "flex", "visibility": "hidden" });
     });
 }
@@ -362,7 +383,7 @@ async function sendCommand(k, shifted) {
         el.addClass('invert');
         setTimeout(() => {
             el.removeClass('invert');
-        }, 500);
+        }, 150);
     }
     if (k == 'Space') {
         var pptxt = rcmd == "Pause" ? "Play" : "Pause";
@@ -433,7 +454,9 @@ function submitCode() {
 function showKeyMap() {
     $("#initText").hide();
     $(".directionTable").fadeIn();
-    $("#topTextKBLink").show();
+    $("#atvDropdownContainerTop").show();
+    $("#topTextKBLink").addClass('kb-visible');
+    scheduleResize();
     
     var longPressTimers = {};
     var longPressProgress = {};
@@ -546,11 +569,12 @@ function showKeyMap() {
     var creds = _getCreds();
     if (Object.keys(creds).indexOf("Companion") > -1) {
         $("#topTextHeader").hide();
-        $("#topTextKBLink").show();
+        $("#topTextKBLink").addClass('kb-visible');
     } else {
         $("#topTextHeader").show();
-        $("#topTextKBLink").hide();
+        $("#topTextKBLink").removeClass('kb-visible');
     }
+    scheduleResize();
 }
 
 var connecting = false;
@@ -607,36 +631,56 @@ function setStatus(txt) {
 function startScan() {
     $("#initText").hide();
     $("#loader").fadeIn();
-    $("#topTextKBLink").hide();
+    $("#topTextKBLink").removeClass('kb-visible');
+    $("#atvDropdownContainerTop").hide();
     $("#addNewElements").show();
     $("#runningElements").hide();
     //mb.showWindow();
-    $("#atvDropdownContainer").html("");
+    $("#atvDropdownContainerTop").html("");
     setStatus("Please wait, scanning...")
     $("#pairingLoader").html(getLoader());
     //ipcRenderer.invoke('scanDevices');
     ws_startScan();
+    scheduleResize();
 }
 
+function shouldEnableDarkMode() {
+    var uimode = localStorage.getItem("uimode") || "systemmode";
+    var alwaysUseDarkMode = (uimode == "darkmode");
+    var neverUseDarkMode = (uimode == "lightmode");
+
+    if (alwaysUseDarkMode) return true;
+    if (neverUseDarkMode) return false;
+
+    try {
+        if (nativeTheme) {
+            return nativeTheme.shouldUseDarkColors;
+        }
+        if (window.matchMedia) {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+    } catch (err) {
+        console.log('Error checking system theme:', err);
+    }
+    return false;
+}
+
+function applyPreferredTheme() {
+    var darkModeEnabled = shouldEnableDarkMode();
+    if (darkModeEnabled) {
+        $("body").addClass("darkMode");
+        $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
+    } else {
+        $("body").removeClass("darkMode");
+        $("#s2style-sheet").attr('href', 'css/select2.min.css')
+    }
+    return darkModeEnabled;
+}
 
 function handleDarkMode() {
     try {
-        if (!nativeTheme) return;
-        var uimode = localStorage.getItem("uimode") || "systemmode";
-        var alwaysUseDarkMode = (uimode == "darkmode");
-        var neverUseDarkMode = (uimode == "lightmode");
-    
-        var darkModeEnabled = (nativeTheme.shouldUseDarkColors || alwaysUseDarkMode) && (!neverUseDarkMode);
-        console.log(`darkModeEnabled: ${darkModeEnabled}`)
-        if (darkModeEnabled) {
-            $("body").addClass("darkMode");
-            $("#s2style-sheet").attr('href', 'css/select2-inverted.css')
-            ipcRenderer.invoke('uimode', 'darkmode');
-        } else {
-            $("body").removeClass("darkMode");
-            $("#s2style-sheet").attr('href', 'css/select2.min.css')
-            ipcRenderer.invoke('uimode', 'lightmode');
-        }
+        var darkModeEnabled = applyPreferredTheme();
+        ipcRenderer.invoke('uimode', darkModeEnabled ? 'darkmode' : 'lightmode');
     } catch (err) {
         console.log('Error setting dark mode:', err);
     }
@@ -823,6 +867,7 @@ function addThemeListener() {
 }
 
 $(function() {    
+    applyPreferredTheme();
     initIPC();
     var wp = getWorkingPath();
     $("#workingPathSpan").html(`<strong>${wp}</strong>`);

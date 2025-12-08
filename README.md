@@ -28,9 +28,9 @@ macOS and Windows versions can be downloaded from here: https://github.com/bshar
 
  1. Run `npm install` (`yarn` and `pnpm` should also work)
  2. Run `npm start`
- 3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
- 4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
- 5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Win+Shift+R`
+3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
+4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
+5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Win+Shift+R`
 
 ## Building
 
@@ -43,3 +43,12 @@ This is cobbled together from a few projects I've worked on. It works well enoug
 This project is built using [pyatv.](https://pyatv.dev/)
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/brianharper)
+
+## Recent UX and Accessibility Improvements
+
+- Pairing view cancel button is aligned with the top close control.
+- “Open Keyboard” is a proper, focusable button; smaller and centered under the keypad.
+- Added ARIA labels to all remote buttons and toolbar semantics for the keypad.
+- Menubar and input windows use solid dark backgrounds (no vibrancy/blur) with sensible min/max sizes for stability.
+- Input window panel restyled with lighter shadows, centered helper text, and disabled autocomplete/spellcheck for cleaner entry.
+- Keyboard-focus polling reduced and stopped on hide/blur to cut idle work.

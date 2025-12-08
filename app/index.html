@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/pure-min.css">
     <link rel="stylesheet" href="css/all.css">
-    <link rel="stylesheet" id="s2style-sheet" href="css/select2-inverted.css">
+    <link rel="stylesheet" id="s2style-sheet" href="css/select2.min.css">
     <script>
         window.jQuery = window.$ = require('jquery');
         require('./js/select2.min.js')($)
@@ -20,28 +20,14 @@
 
 
     <body>
-        <div class="pure-g">
-            <div class="pure-u-1-2">
-                <div id="alwaysOnTopWrapper">
-                    <span class="keyTextAlt">H - hide window</span>
-                </div>
-            </div>
-            <div class="pure-u-1-2">
-                <div id="exitLinkWrapper">
-                    <button id="exitLink" class="simpleButton"><span class="keyText">Quit</span><span class="keyTextAlt">Q (3x)</span></button>
-                </div>
-            </div>
+        <div class="center" id="topDropdownContainer">
+            <button id="exitLink" class="simpleButton quit-button-top"><span class="keyText">X</span></button>
+            <div id="atvDropdownContainerTop"></div>
         </div>
         <div class="center" id="keyboardButtonDiv">
             <div class="topText">
                 <span id="topTextHeader">ATV Remote</span>
-            </div>
-                <div id="topTextKBLink">
-                    <div onclick="openKeyboardClick(event)">
-                        <span class="keyTextAlt">K</span>
-                        <span class="keyText">Open Keyboard</span>
-                    </div>
-                </div>    
+            </div>    
             
             <div id="initText"> 
                 <p>If this is the first time this program has started, please be patient. It may take up to five minutes to get set up.</p>
@@ -93,40 +79,40 @@
                                 <td></td>
                             </tr>
                         </table>
-                        <table class="directionTable">
+                        <table class="directionTable" role="toolbar" aria-label="Remote controls">
                             <tr>
                                 <td>
-                                    <div data-key="volume_down" data-tippy-content="Lower Volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-down"></i></span><span class='keyTextAlt'>-, _</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="up" data-tippy-content="Up arrow" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-up"></i></span><span class='keyTextAlt'>Up</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="volume_up" data-tippy-content="Raise Volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-up"></i></span><span class='keyTextAlt'>+, =</span></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div data-key="left" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-left"></i></span><span class='keyTextAlt'>Left</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="select" class="selectArrow directionArrows directionCircle"><span class='keyText'>Select</span><span class='keyTextAlt'>Enter</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="right" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-right"></i></span><span class='keyTextAlt'>Right</span></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div data-key="skip_backward" class="directionCircle"><span class='keyText'>Prev</span><span class='keyTextAlt'>P, [</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="down" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-down"></i></span><span class='keyTextAlt'>Down</span></div>
-                                </td>
-                                <td>
-                                    <div data-key="skip_forward" class="directionCircle"><span class='keyText'>Next</span><span class='keyTextAlt'>N, ]</span></div>
-                                </td>
-                            </tr>
+                    <div data-key="volume_down" data-tippy-content="Lower Volume" aria-label="Lower volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-down"></i></span><span class='keyTextAlt'>-, _</span></div>
+                </td>
+                <td>
+                    <div data-key="up" data-tippy-content="Up arrow" aria-label="Up" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-up"></i></span><span class='keyTextAlt'>Up</span></div>
+                </td>
+                <td>
+                    <div data-key="volume_up" data-tippy-content="Raise Volume" aria-label="Raise volume" class=" directionCircle volumeKeys"><span class='keyText'><i class="fas fa-volume-up"></i></span><span class='keyTextAlt'>+, =</span></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div data-key="left" aria-label="Left" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-left"></i></span><span class='keyTextAlt'>Left</span></div>
+                </td>
+                <td>
+                    <div data-key="select" aria-label="Select" class="selectArrow directionArrows directionCircle"><span class='keyText'>Select</span><span class='keyTextAlt'>Enter</span></div>
+                </td>
+                <td>
+                    <div data-key="right" aria-label="Right" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-right"></i></span><span class='keyTextAlt'>Right</span></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div data-key="skip_backward" aria-label="Previous" class="directionCircle"><span class='keyText'>Prev</span><span class='keyTextAlt'>P, [</span></div>
+                </td>
+                <td>
+                    <div data-key="down" aria-label="Down" class="directionArrows directionCircle"><span class='keyText'><i class="fas fa-arrow-down"></i></span><span class='keyTextAlt'>Down</span></div>
+                </td>
+                <td>
+                    <div data-key="skip_forward" aria-label="Next" class="directionCircle"><span class='keyText'>Next</span><span class='keyTextAlt'>N, ]</span></div>
+                </td>
+            </tr>
                             <tr>
                                 <td>
 
@@ -136,20 +122,20 @@
                                 </td>
                                 <td>
 
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="directionCircle" data-key="play_pause"><span class='keyText'>Play</span><span class='keyTextAlt'>Space</span></div>
-                                </td>
-                                <td>
-                                    <div class="directionCircle menuButton" data-key="menu"><span class='keyText'>Menu</span><span class='keyTextAlt'>Esc, <i class="fas fa-backspace"></i></span></div>
-                                </td>
-                                <td>
-                                    <div class="directionCircle" data-key="home"><span class='keyText'>TV</span><span class='keyTextAlt'>T, L</span></div>
-                                </td>
-                            </tr>
-                        </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="directionCircle" data-key="play_pause" aria-label="Play/Pause"><span class='keyText'>Play</span><span class='keyTextAlt'>Space</span></div>
+                </td>
+                <td>
+                    <div class="directionCircle menuButton" data-key="menu" aria-label="Menu"><span class='keyText'>Menu</span><span class='keyTextAlt'>Esc, <i class="fas fa-backspace"></i></span></div>
+                </td>
+                <td>
+                    <div class="directionCircle" data-key="home" aria-label="TV/Home"><span class='keyText'>TV</span><span class='keyTextAlt'>T, L</span></div>
+                </td>
+            </tr>
+        </table>
 
                     </div>
                     <div class="pure-u-1 pure-u-md-1-4"></div>
@@ -158,7 +144,12 @@
                     <div class="pure-u-5-6"></div>
                     <div class="pure-u-1-12"></div>
                 </div>
-
+                <div class="keyboard-control">
+                    <button id="topTextKBLink" role="button" tabindex="0" aria-label="Open keyboard" aria-keyshortcuts="K" onclick="openKeyboardClick(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openKeyboardClick(event);}">
+                        <span class="keyTextAlt">K</span>
+                        <span class="keyText">Open Keyboard</span>
+                    </button>
+                </div>
             </div>
 
 
@@ -170,7 +161,6 @@
         <footer>
             <div class="footer center">
                 <h2 id="statusText"></h2>
-                <div id="atvDropdownContainer"></div>
             </div>
         </footer>
     </body>

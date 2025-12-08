@@ -67,17 +67,23 @@ function createHotkeyWindow() {
 }
 
 function createInputWindow() {
-    secondWindow = new BrowserWindow({ 
+    secondWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            enableRemoteModule: true    
+            enableRemoteModule: true
         },
         hide: true,
-        width: 600, 
-        height: 250,
+        width: 520,
+        height: 260,
+        minWidth: 320,
+        minHeight: 200,
+        maxWidth: 640,
+        maxHeight: 320,
         minimizable: false,
-        maximizable: false
+        maximizable: false,
+        transparent: false,
+        backgroundColor: '#111111'
     });
     require("@electron/remote/main").enable(secondWindow.webContents);
     secondWindow.loadFile('input.html');
@@ -100,8 +106,12 @@ function createWindow() {
         showDockIcon: false,
         browserWindow: {
             width: 300,
-            height: 500,
+            height: 450,
+            minWidth: 280,
+            minHeight: 380,
             alwaysOnTop: false,
+            transparent: false,
+            backgroundColor: '#111111',
             webPreferences: {
                 nodeIntegration: true,
                 enableRemoteModule: true,
