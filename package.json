@@ -26,13 +26,9 @@
     "scripts": {
         "start": "electron app",
         "postinstall": "electron-builder install-app-deps",
-        "build:atvjs": "cd app/atvjs && npm install && npm run build",
-        "prebuild": "npm run build:atvjs",
         "build": "npx electron-builder -m",
         "docker-build": "./electron_docker.sh 'npm run build:win'",
-        "prebuild:win": "npm run build:atvjs",
         "build:win": "npx electron-builder -w",
-        "prebuild-arm": "npm run build:atvjs",
         "build-arm": "npx electron-builder -m --arm64"
     },
     "devDependencies": {
