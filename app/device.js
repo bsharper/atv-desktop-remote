@@ -1,41 +1,32 @@
 /**
- * ATV Bridge - Direct JavaScript communication with Apple TV using atvjs
- * Replaces the Python WebSocket bridge (pyatv)
+ * Device Module
+ * Handles all Apple TV device operations: scanning, pairing, connecting, commands.
+ * Wraps atvjs library and manages credential storage.
  */
 
 const atvjs = require('./atvjs');
 const EventEmitter = require('events');
+const { States, appState } = require('./state');
 
-// Global state
+const events = new EventEmitter();
+
+// Connection state
 let connection = null;
 let pairingSession = null;
 let pairingDevice = null;
-let kbFocusCallback = null;
 
-const atv_events = new EventEmitter();
+// Retry configuration
+const CONNECT_RETRY_DELAY = 1000; // ms between retries
 
 /**
  * Scan for Apple TV devices on the network
+ * @param {number} timeout - Scan timeout in ms
  * @returns {Promise<string[]>} Array of device strings in format "Name (IP)"
  */
 async function scan(timeout = 5000) {
     try {
         const devices = await atvjs.scan(timeout);
-        // Return in the same format as pyatv: "Name (IP)"
         return devices.map(d => `${d.name} (${d.address})`);
-    } catch (err) {
-        console.error('Scan error:', err);
-        return [];
-    }
-}
-
-/**
- * Get full device info from scan
- * @returns {Promise<Object[]>} Array of AppleTVDevice objects
- */
-async function scanDevices(timeout = 5000) {
-    try {
-        return await atvjs.scan(timeout);
     } catch (err) {
         console.error('Scan error:', err);
         return [];
@@ -48,7 +39,7 @@ async function scanDevices(timeout = 5000) {
  */
 async function startPair(deviceString) {
     // Parse device string to get IP - match the LAST parenthesized value
-    // This handles device names with parentheses like "Upstairs Bedroom (3) (192.168.1.223)"
+    // Handles device names with parentheses like "Upstairs Bedroom (3) (192.168.1.223)"
     const match = deviceString.match(/\(([^)]+)\)$/);
     if (!match) {
         throw new Error('Invalid device string format');
@@ -75,7 +66,6 @@ async function startPair(deviceString) {
 /**
  * Complete Phase 1 (AirPlay) pairing with PIN
  * @param {string} pin - 4-digit PIN from Apple TV screen
- * @returns {Promise<Object>} Partial credentials or signal to continue to Phase 2
  */
 async function finishPair1(pin) {
     if (!pairingSession || pairingSession._phase !== 1) {
@@ -130,16 +120,15 @@ async function finishPair2(pin) {
 }
 
 /**
- * Connect to an Apple TV using stored credentials
- * @param {Object} credentials - Credentials object with airplay, companion, and device info
+ * Connect to an Apple TV using credentials, with retry logic
+ * @param {Object} credentials - Credentials object
+ * @param {boolean} isRetry - Whether this is a retry attempt
  */
-async function connectToDevice(credentials) {
+async function connect(credentials, isRetry = false) {
     let creds = credentials;
     let device = credentials.device;
 
     // Convert old pyatv credential format to new format if needed
-    // Old format: {identifier, credentials, Companion}
-    // New format: {airplay, companion, device}
     if (credentials.credentials && !credentials.airplay) {
         console.log('Converting old credential format to new format');
         creds = {
@@ -155,7 +144,6 @@ async function connectToDevice(credentials) {
             device = devices.find(d => d.identifier === credentials.identifier);
         }
         if (!device && devices.length > 0) {
-            // Fallback to first device
             device = devices[0];
         }
         if (!device) {
@@ -175,11 +163,38 @@ async function connectToDevice(credentials) {
     atvjs.onConnectionLost(connection, (error) => {
         console.log('Connection lost:', error);
         connection = null;
-        atv_events.emit('connection_lost', error);
+        events.emit('connection_lost', error);
     });
 
-    atv_events.emit('connected', true);
+    events.emit('connected');
     return true;
+}
+
+/**
+ * Connect with automatic retry on failure
+ * Uses appState to track retry count
+ * @param {Object} credentials
+ */
+async function connectWithRetry(credentials) {
+    try {
+        await connect(credentials);
+        appState.transition(States.CONNECTED);
+    } catch (err) {
+        console.error('Connection failed:', err.message);
+
+        if (appState.shouldRetryConnection()) {
+            console.log(`Retrying connection (attempt ${appState.connectRetries + 1})...`);
+            // Stay in CONNECTING state (increments retry counter)
+            appState.transition(States.CONNECTING, { credentials });
+
+            await new Promise(resolve => setTimeout(resolve, CONNECT_RETRY_DELAY));
+            return connectWithRetry(credentials);
+        } else {
+            console.log('Max retries reached, falling back to scan');
+            appState.transition(States.SCANNING);
+            throw err;
+        }
+    }
 }
 
 /**
@@ -211,8 +226,6 @@ async function sendKey(key, action) {
 
     // Handle long-press keys
     if (action === 'Hold') {
-        // For hold actions, we need to send key down, wait, then key up
-        // atvjs handles home_hold specially, but for other keys:
         if (key === 'home' || key === 'home_hold') {
             key = 'home_hold';
         }
@@ -223,12 +236,9 @@ async function sendKey(key, action) {
 
 /**
  * Check if keyboard is focused on Apple TV
- * @returns {Promise<boolean>}
  */
 async function getKeyboardFocus() {
-    if (!connection) {
-        return false;
-    }
+    if (!connection) return false;
     try {
         return await atvjs.getKeyboardFocusState(connection);
     } catch (err) {
@@ -239,12 +249,9 @@ async function getKeyboardFocus() {
 
 /**
  * Get current text from focused keyboard field
- * @returns {Promise<string|null>}
  */
 async function getText() {
-    if (!connection) {
-        return null;
-    }
+    if (!connection) return null;
     try {
         return await atvjs.getText(connection);
     } catch (err) {
@@ -255,12 +262,9 @@ async function getText() {
 
 /**
  * Set text in focused keyboard field
- * @param {string} text
  */
 async function setText(text) {
-    if (!connection) {
-        return;
-    }
+    if (!connection) return;
     try {
         await atvjs.setText(connection, text);
     } catch (err) {
@@ -268,19 +272,126 @@ async function setText(text) {
     }
 }
 
-// Export everything
+// ============ Credential Storage ============
+
+const CREDS_KEY = 'remote_credentials';
+const ACTIVE_CREDS_KEY = 'atvcreds';
+
+/**
+ * Save credentials for a device
+ * @param {string} name - Device name
+ * @param {Object} creds - Credentials object
+ */
+function saveCredentials(name, creds) {
+    let parsed = creds;
+    if (typeof creds === 'string') {
+        parsed = JSON.parse(creds);
+    }
+
+    const all = getAllCredentials();
+    all[name] = parsed;
+    localStorage.setItem(CREDS_KEY, JSON.stringify(all));
+}
+
+/**
+ * Get all saved credentials
+ * @returns {Object} Map of device name to credentials
+ */
+function getAllCredentials() {
+    try {
+        return JSON.parse(localStorage.getItem(CREDS_KEY) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * Get credentials for a specific device, or the first available
+ * @param {string} name - Optional device name
+ * @returns {Object|null}
+ */
+function getCredentials(name) {
+    const all = getAllCredentials();
+    const keys = Object.keys(all);
+
+    if (keys.length === 0) return null;
+
+    if (name && all[name]) {
+        return all[name];
+    }
+
+    // Return first available
+    return all[keys[0]];
+}
+
+/**
+ * Get the currently active credentials
+ */
+function getActiveCredentials() {
+    try {
+        const creds = localStorage.getItem(ACTIVE_CREDS_KEY);
+        if (!creds || creds === 'false') return null;
+        return JSON.parse(creds);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Set the active credentials
+ */
+function setActiveCredentials(creds) {
+    localStorage.setItem(ACTIVE_CREDS_KEY, JSON.stringify(creds));
+}
+
+/**
+ * Get list of saved device names
+ */
+function getSavedDeviceNames() {
+    return Object.keys(getAllCredentials());
+}
+
+/**
+ * Check if we have valid credentials stored
+ */
+function hasValidCredentials() {
+    const creds = getActiveCredentials();
+    if (!creds) return false;
+
+    // Check for both old format (credentials/identifier) and new format (airplay/companion)
+    return (creds.credentials && creds.identifier) || (creds.airplay && creds.companion);
+}
+
 module.exports = {
+    // Scanning
     scan,
-    scanDevices,
+
+    // Pairing
     startPair,
     finishPair1,
     finishPair2,
-    connectToDevice,
+
+    // Connection
+    connect,
+    connectWithRetry,
     disconnect,
     isConnected,
+
+    // Commands
     sendKey,
     getKeyboardFocus,
     getText,
     setText,
-    atv_events
+
+    // Credentials
+    saveCredentials,
+    getAllCredentials,
+    getCredentials,
+    getActiveCredentials,
+    setActiveCredentials,
+    getSavedDeviceNames,
+    hasValidCredentials,
+
+    // Events
+    events
 };
