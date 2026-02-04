@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
@@ -36,8 +36,8 @@
         "build-arm": "npx electron-builder -m --arm64"
     },
     "devDependencies": {
-        "electron": "^38.2.1",
-        "electron-builder": "^26.0.20"
+        "electron": "^40.1.0",
+        "electron-builder": "^26.7.0"
     },
     "dependencies": {
         "@electron/remote": "^2.1.2",

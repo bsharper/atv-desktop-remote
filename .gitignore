@@ -13,3 +13,4 @@ pyatv
 old_dist
 build/__pycache__
 REF*.md
+app/atvjs

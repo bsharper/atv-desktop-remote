@@ -4,7 +4,7 @@
  * Wraps atvjs library and manages credential storage.
  */
 
-const atvjs = require('./atvjs');
+const atvjs = require('@bharper/atv-js');
 const EventEmitter = require('events');
 const { States, appState } = require('./state');
 
