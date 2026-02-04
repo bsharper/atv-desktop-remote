@@ -8,12 +8,9 @@ const util = require('util');
 var secondWindow;
 process.env['MYPATH'] = path.join(process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + "/.local/share"), "ATV Remote");
 const lodash = _ = require('./js/lodash.min');
-const server_runner = require('./server_runner')
 const fs = require('fs');
-server_runner.startServer();
 
-
-global["server_runner"] = server_runner;
+// No longer using Python server - atvjs communicates directly
 
 const preloadWindow = true;
 const readyEvent = preloadWindow ? "ready" : "after-create-window";
@@ -145,7 +142,6 @@ function createWindow() {
             console.log(`ipcDebug: ${arg}`)
         })
         ipcMain.handle('quit', event => {
-            server_runner.stopServer();
             app.exit()
         });
         ipcMain.handle('alwaysOnTop', (event, arg) => {
@@ -168,7 +164,8 @@ function createWindow() {
         });
         ipcMain.handle('isWSRunning', (event, arg) => {
             console.log('isWSRunning');
-            if (server_runner.isServerRunning()) win.webContents.send('wsserver_started')
+            // atvjs bridge is always ready - no server needed
+            win.webContents.send('wsserver_started')
         })
         
         ipcMain.handle('closeInputOpenRemote', (event, arg) => {
@@ -198,20 +195,9 @@ function createWindow() {
 
         win.on('ready-to-show', () => {
             console.log('ready to show')
-            if (server_runner.isServerRunning()) {
-                win.webContents.send("wsserver_started")
-            }
-        })
-
-        if (server_runner.isServerRunning()) {
-            console.log(`server already running`)
+            // atvjs bridge is always ready - send started event
             win.webContents.send("wsserver_started")
-        } else {
-            console.log(`server waiting for event`)
-            server_runner.server_events.on("started", () => {
-                win.webContents.send("wsserver_started")
-            })
-        }
+        })
     })
 }
 
@@ -333,13 +319,7 @@ function registerHotkeys() {
 }
 
 app.whenReady().then(() => {
-
-    server_runner.testPythonExists().then(r => {
-        console.log(`python exists: ${r}`)
-    }).catch(err => {
-        console.log(`python does not exist: ${err}`)
-    })
-
+    // No longer need Python - using atvjs directly
     createWindow();
     registerHotkeys();
    
@@ -356,7 +336,7 @@ app.whenReady().then(() => {
 })
 
 app.on("before-quit", () => {
-    server_runner.stopServer();
+    // No cleanup needed - atvjs connections close automatically
 })
 
 app.on('window-all-closed', () => {

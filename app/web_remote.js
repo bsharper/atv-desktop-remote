@@ -544,7 +544,8 @@ function showKeyMap() {
     });
     
     var creds = _getCreds();
-    if (Object.keys(creds).indexOf("Companion") > -1) {
+    // Check for both old format (Companion) and new format (companion)
+    if (creds.Companion || creds.companion) {
         $("#topTextHeader").hide();
         $("#topTextKBLink").show();
     } else {
@@ -585,9 +586,14 @@ async function connectToATV() {
 
     $("#pairingElements").hide();
 
-    await ws_connect(atv_credentials);
-    createATVDropdown();
-    showKeyMap();
+    try {
+        await ws_connect(atv_credentials);
+        createATVDropdown();
+        showKeyMap();
+    } catch (err) {
+        console.log('Connection failed, starting scan:', err.message);
+        startScan();
+    }
     connecting = false;
 }
 
@@ -732,7 +738,7 @@ function toggleAlwaysOnTop(event) {
 }
 
 async function helpMessage() {
-    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\n To open this program, press Command+Shift+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
+    await dialog.showMessageBox({ type: 'info', title: 'Howdy!', message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\nTo open this program, press Command+Control+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.' })
 }
 
 function timeoutAsync(ms) {
@@ -777,7 +783,8 @@ async function init() {
         mb.showWindow();
     }
 
-    if (creds && creds.credentials && creds.identifier) {
+    // Check for both old format (credentials/identifier) and new format (airplay/companion)
+    if (creds && ((creds.credentials && creds.identifier) || (creds.airplay && creds.companion))) {
         atv_credentials = creds;
         connectToATV();
     } else {
@@ -822,9 +829,6 @@ function addThemeListener() {
     }
 }
 
-$(function() {    
+$(function() {
     initIPC();
-    var wp = getWorkingPath();
-    $("#workingPathSpan").html(`<strong>${wp}</strong>`);
-    ipcRenderer.invoke('isWSRunning');
 })

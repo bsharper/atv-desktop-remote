@@ -1,0 +1,3 @@
+[submodule "app/atvjs"]
+	path = app/atvjs
+	url = https://github.com/bsharper/atvjs

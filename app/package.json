@@ -1,10 +1,12 @@
 {
     "name": "atv-mac-remote",
-    "version": "1.4.3",
+    "version": "2.0.0",
     "description": "ATV Remote",
     "productName": "ATV Remote",
     "scripts": {
-        "start": "cd .. && npx electron app/main.js"
+        "start": "cd .. && npx electron app/main.js",
+        "build:atvjs": "cd atvjs && npm install && npm run build",
+        "postinstall": "npm run build:atvjs"
     },
     "keywords": [],
     "author": "",
@@ -16,6 +18,10 @@
         "electron-positioner": "^4.1.0",
         "jquery": "^3.5.1",
         "menubar": "^9.0.2",
-        "ws": "^8.3.0"
+        "@noble/ciphers": "^2.1.1",
+        "bplist-creator": "^0.1.0",
+        "bplist-parser": "^0.3.2",
+        "fast-srp-hap": "^2.0.4",
+        "multicast-dns": "^7.2.5"
     }
 }

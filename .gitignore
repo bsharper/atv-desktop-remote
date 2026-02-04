@@ -11,3 +11,4 @@ stopserver
 .env*
 pyatv
 old_dist
+build/__pycache__
