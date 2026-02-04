@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "1.4.3",
+    "version": "2.0.1",
     "description": "ATV Remote",
     "productName": "ATV Remote",
     "scripts": {
@@ -12,10 +12,10 @@
     "main": "main.js",
     "dependencies": {
         "@electron/remote": "^2.1.2",
+        "@bharper/atv-js": "^0.2.4",
         "bluebird": "^3.7.2",
         "electron-positioner": "^4.1.0",
         "jquery": "^3.5.1",
-        "menubar": "^9.0.2",
-        "ws": "^8.3.0"
+        "menubar": "^9.0.2"
     }
 }

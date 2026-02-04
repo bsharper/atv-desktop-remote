@@ -43,12 +43,8 @@
                     </div>
                 </div>    
             
-            <div id="initText"> 
-                <p>If this is the first time this program has started, please be patient. It may take up to five minutes to get set up.</p>
-                <p>The Python library <strong>pyatv</strong> is being installed in the directory:</p>
-                <p><span id="workingPathSpan"></span></p>
-                <p>This only happens the first time the program is run, it will normally start much more quickly.</p>
-                <p>If you see this message after waiting 5 minutes, review the <strong>atv_pip_install.log</strong> file in the directory above.</p>
+            <div id="initText">
+                <p>Starting ATV Remote...</p>
                 <div style="text-align:center">
                     <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
                 </div>
@@ -63,7 +59,7 @@
                 <div id="pairingElements">
 
                     <div id="results">
-                        <label for="atv_picker">Select a device below to start pairing. You only need to do this once.</label>
+                        <label for="atv_picker">Select a device to pair with. Your credentials will be saved for future use.</label>
                         <select id="atv_picker"></select>
                     </div>
                     <div id="pairCodeElements">
@@ -81,18 +77,6 @@
                 <div class="pure-g">
                     <div class="pure-u-1 pure-u-md-1-4"></div>
                     <div class="pure-u-1 pure-u-md-1-2">
-                        <table class="pythonError">
-                            <tr>
-                                <td></td>
-                                <td><span class="pythonErrorHeader">Python not found</span></td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td></td>
-                                <td>You must install Python to use this program. Visit python.org to download Python, and make sure to select the option to add Python to the path.</td>
-                                <td></td>
-                            </tr>
-                        </table>
                         <table class="directionTable">
                             <tr>
                                 <td>
@@ -175,6 +159,5 @@
         </footer>
     </body>
     <script src="web_remote.js"></script>
-    <script src="ws_remote.js"></script>
 
 </html>

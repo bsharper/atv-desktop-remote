@@ -1,12 +1,20 @@
 {
     "name": "atv-mac-remote",
-    "version": "1.4.3",
+    "version": "2.0.1",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
     "build": {
         "productName": "ATV Remote",
         "appId": "com.electron.atvMacRemote",
+        "files": [
+            "**/*",
+            "!atvjs/src",
+            "!atvjs/examples",
+            "!atvjs/.git",
+            "!atvjs/tsconfig.json",
+            "!atvjs/*.md"
+        ],
         "mac": {
             "category": "public.app-category.utilities",
             "hardenedRuntime": true,
@@ -16,17 +24,20 @@
         }
     },
     "scripts": {
-        "embed": "node build/create_python_embed.js --overwrite",
         "start": "electron app",
         "postinstall": "electron-builder install-app-deps",
+        "build:atvjs": "cd app/atvjs && npm install && npm run build",
+        "prebuild": "npm run build:atvjs",
         "build": "npx electron-builder -m",
         "docker-build": "./electron_docker.sh 'npm run build:win'",
+        "prebuild:win": "npm run build:atvjs",
         "build:win": "npx electron-builder -w",
+        "prebuild-arm": "npm run build:atvjs",
         "build-arm": "npx electron-builder -m --arm64"
     },
     "devDependencies": {
-        "electron": "^38.2.1",
-        "electron-builder": "^26.0.20"
+        "electron": "^40.1.0",
+        "electron-builder": "^26.7.0"
     },
     "dependencies": {
         "@electron/remote": "^2.1.2",
@@ -34,7 +45,8 @@
     },
     "pnpm": {
         "onlyBuiltDependencies": [
-            "electron"
+            "electron",
+            "electron-winstaller"
         ]
     }
 }
