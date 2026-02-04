@@ -7,14 +7,6 @@
     "build": {
         "productName": "ATV Remote",
         "appId": "com.electron.atvMacRemote",
-        "files": [
-            "**/*",
-            "!atvjs/src",
-            "!atvjs/examples",
-            "!atvjs/.git",
-            "!atvjs/tsconfig.json",
-            "!atvjs/*.md"
-        ],
         "mac": {
             "category": "public.app-category.utilities",
             "hardenedRuntime": true,
