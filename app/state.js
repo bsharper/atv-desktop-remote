@@ -7,7 +7,7 @@ const EventEmitter = require('events');
 
 // Stale connection timeout in milliseconds
 // Set to 5000 (5 seconds) for testing, change to 3600000 (60 minutes) for production
-const STALE_CONNECTION_TIMEOUT = 5000;
+const STALE_CONNECTION_TIMEOUT = 3600000;  //  5000;
 
 // Valid states
 const States = {
