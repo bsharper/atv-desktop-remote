@@ -441,6 +441,8 @@ function setupContextMenu() {
         { label: 'Appearance', submenu: subMenu },
         { label: 'Change hotkey', click: () => ipcRenderer.invoke('loadHotkeyWindow') },
         { type: 'separator' },
+        { label: 'Clear saved data', click: clearSavedData },
+        { type: 'separator' },
         { label: 'Quit', click: () => remote.app.quit() }
     ]);
 
@@ -461,6 +463,22 @@ function setUIMode(event) {
 function toggleAlwaysOnTop(event) {
     localStorage.setItem('alwaysOnTopChecked', String(event.checked));
     ipcRenderer.invoke('alwaysOnTop', String(event.checked));
+}
+
+async function clearSavedData() {
+    const result = await remote.dialog.showMessageBox({
+        type: 'warning',
+        buttons: ['Cancel', 'Clear'],
+        defaultId: 0,
+        message: 'Clear all saved data?',
+        detail: 'This will remove all paired devices and preferences. You will need to pair your Apple TV again.',
+    });
+    if (result.response === 1) {
+        localStorage.clear();
+        device.disconnect();
+        appState.reset();
+        appState.transition(States.SCANNING);
+    }
 }
 
 /**
