@@ -6,6 +6,7 @@
 const electron = require('electron');
 const ipcRenderer = electron.ipcRenderer;
 const path = require('path');
+const fs = require('fs');
 
 const { States, appState } = require('./state');
 const device = require('./device');
@@ -90,6 +91,58 @@ function setupThemeListener() {
 }
 
 /**
+ * Check for and offer to remove legacy Python files from previous app versions
+ */
+async function checkLegacyCleanup() {
+    const state = localStorage.getItem('legacyCleanup') || 'pending';
+    if (state === 'done' || state === 'never') return;
+    if (sessionStorage.getItem('legacyCleanupAsked')) return;
+    sessionStorage.setItem('legacyCleanupAsked', 'true');
+
+    const appData = process.env.MYPATH;
+    if (!appData) return;
+
+    const legacyItems = [
+        { name: 'env', dir: true },
+        { name: 'wsserver.py' },
+        { name: 'start_server.sh' },
+        { name: 'start_server.bat' },
+        { name: 'atv_pip_install.log' },
+    ];
+
+    const found = legacyItems.filter(item => {
+        try { return fs.existsSync(path.join(appData, item.name)); }
+        catch { return false; }
+    });
+
+    if (found.length === 0) {
+        localStorage.setItem('legacyCleanup', 'done');
+        return;
+    }
+
+    const result = await dialog.showMessageBox({
+        type: 'question',
+        buttons: ['Clean Up', 'Not Now', "Don't Ask Again"],
+        defaultId: 0,
+        message: 'Remove old app files?',
+        detail: 'Files from a previous version of ATV Remote were found (Python virtual environment and scripts). These are no longer needed. Would you like to remove them?',
+    });
+
+    if (result.response === 0) {
+        for (const item of found) {
+            try {
+                fs.rmSync(path.join(appData, item.name), { recursive: !!item.dir, force: true });
+            } catch (err) {
+                console.error(`Failed to remove legacy item ${item.name}:`, err);
+            }
+        }
+        localStorage.setItem('legacyCleanup', 'done');
+    } else if (result.response === 2) {
+        localStorage.setItem('legacyCleanup', 'never');
+    }
+}
+
+/**
  * Main initialization
  */
 async function init() {
@@ -140,6 +193,9 @@ async function init() {
         await showHelpMessage();
         mb.showWindow();
     }
+
+    // Offer to clean up legacy Python files
+    await checkLegacyCleanup();
 
     // Check for saved credentials and start appropriate flow
     if (device.hasValidCredentials()) {
