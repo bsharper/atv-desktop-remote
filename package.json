@@ -7,10 +7,6 @@
     "build": {
         "productName": "ATV Remote",
         "appId": "com.electron.atvMacRemote",
-        "files": [
-            "app/**/*",
-            "!app/node_modules"
-        ],
         "mac": {
             "category": "public.app-category.utilities",
             "hardenedRuntime": true,
@@ -29,16 +25,10 @@
     },
     "devDependencies": {
         "electron": "^40.1.0",
-        "electron-builder": "^26.7.0"
+        "electron-builder": "^25.1.8"
     },
     "dependencies": {
         "@electron/remote": "^2.1.2",
         "menubar": "^9.5.1"
-    },
-    "pnpm": {
-        "onlyBuiltDependencies": [
-            "electron",
-            "electron-winstaller"
-        ]
     }
 }
