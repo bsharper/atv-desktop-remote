@@ -85,6 +85,11 @@ function setupIPC() {
     });
 
     ipcRenderer.on('powerResume', () => {
+        // Don't attempt reconnect if we're in the middle of pairing
+        if (appState.state === States.PAIRING_1 || appState.state === States.PAIRING_2) {
+            console.log('Power resumed during pairing, ignoring reconnect');
+            return;
+        }
         // Reconnect after sleep/wake
         const creds = device.getActiveCredentials();
         if (creds) {
@@ -209,6 +214,11 @@ function setupDeviceEvents() {
     });
 
     device.events.on('connection_lost', (error) => {
+        // Don't attempt reconnect if we're in the middle of pairing
+        if (appState.state === States.PAIRING_1 || appState.state === States.PAIRING_2) {
+            console.log('Connection lost during pairing, ignoring reconnect');
+            return;
+        }
         console.log('Connection lost, attempting reconnect...');
         const creds = device.getActiveCredentials();
         if (creds) {
