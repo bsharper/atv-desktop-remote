@@ -26,7 +26,7 @@ macOS and Windows versions can be downloaded from here: https://github.com/bshar
  
  ## Running
 
- 1. Run `npm install` (`yarn` and `pnpm` should also work)
+ 1. Run `npm i --legacy-peer-deps` (other package manages may also work)
  2. Run `npm start`
  3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
  4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
