@@ -378,8 +378,8 @@ function restartPairing() {
 function setupPairingHandlers() {
     console.log('Setting up pairing handlers');
 
-    // Remove old handlers first
-    $('#pairButton').off('click');
+    // Remove old handlers first (including mouse handlers that could interfere)
+    $('#pairButton').off('click mousedown mouseup');
 
     // Add click handler
     $('#pairButton').on('click', (e) => {
