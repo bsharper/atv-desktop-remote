@@ -381,12 +381,11 @@ function setupPairingHandlers() {
     // Remove old handlers first (including mouse handlers that could interfere)
     $('#pairButton').off('click mousedown mouseup');
 
-    // Add click handler
-    $('#pairButton').on('click', (e) => {
-        console.log('Pair button clicked');
+    // Add mousedown handler (more reliable than click for this context)
+    $('#pairButton').on('mousedown', (e) => {
+        console.log('Pair button mousedown');
         e.preventDefault();
         submitPairingCode();
-        return false;
     });
 
     // Also handle Enter key in the input

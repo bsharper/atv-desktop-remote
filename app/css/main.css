@@ -162,6 +162,7 @@ a:active {
 
 #pairButton {
     float: right;
+    position: relative;
 }
 
 #results {
