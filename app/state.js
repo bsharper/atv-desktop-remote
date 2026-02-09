@@ -23,7 +23,7 @@ const States = {
 const validTransitions = {
     [States.INIT]: [States.SCANNING, States.CONNECTING],
     [States.SCANNING]: [States.PAIRING_1],
-    [States.PAIRING_1]: [States.PAIRING_2, States.SCANNING],
+    [States.PAIRING_1]: [States.PAIRING_2, States.CONNECTING, States.SCANNING],
     [States.PAIRING_2]: [States.CONNECTING, States.SCANNING],
     [States.CONNECTING]: [States.CONNECTED, States.CONNECTING, States.SCANNING],
     [States.CONNECTED]: [States.SCANNING, States.CONNECTING]

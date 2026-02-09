@@ -311,39 +311,19 @@ function submitPairingCode() {
     }
 
     $('#pairCode').val('');
-
-    const currentPhase = $('#pairStepNum').text();
-    console.log('Current phase:', currentPhase);
-
-    if (currentPhase === '1') {
-        console.log('Calling finishPair1...');
-        device.finishPair1(code)
-            .then(() => {
-                console.log('finishPair1 succeeded, transitioning to PAIRING_2');
-                appState.transition(States.PAIRING_2);
-            })
-            .catch(err => {
-                console.error('Pairing phase 1 failed:', err);
-                views.setStatus('Pairing failed - restarting. Check PIN and try again.');
-                // Restart pairing from scratch - session is now invalid
-                restartPairing();
-            });
-    } else {
-        console.log('Calling finishPair2...');
-        device.finishPair2(code)
-            .then((credentials) => {
-                console.log('finishPair2 succeeded, got credentials');
-                device.saveCredentials(appState.pairDevice, credentials);
-                device.setActiveCredentials(credentials);
-                appState.transition(States.CONNECTING, { credentials });
-            })
-            .catch(err => {
-                console.error('Pairing phase 2 failed:', err);
-                views.setStatus('Pairing failed - restarting. Check PIN and try again.');
-                // Restart pairing from scratch
-                restartPairing();
-            });
-    }
+    console.log('Calling finishPair2...');
+    device.finishPair2(code)
+        .then((credentials) => {
+            console.log('finishPair2 succeeded, got credentials');
+            device.saveCredentials(appState.pairDevice, credentials);
+            device.setActiveCredentials(credentials);
+            appState.transition(States.CONNECTING, { credentials });
+        })
+        .catch(err => {
+            console.error('Pairing failed:', err);
+            views.setStatus('Pairing failed - restarting. Check PIN and try again.');
+            restartPairing();
+        });
 }
 
 /**
@@ -536,11 +516,6 @@ appState.on(States.PAIRING_1, (data) => {
             views.setStatus('Could not start pairing.');
         });
     }
-});
-
-appState.on(States.PAIRING_2, () => {
-    // Re-setup handlers for phase 2 (same UI, different phase)
-    setupPairingHandlers();
 });
 
 appState.on(States.CONNECTING, (data) => {

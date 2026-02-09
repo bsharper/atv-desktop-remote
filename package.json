@@ -1,6 +1,6 @@
 {
     "name": "atv-mac-remote",
-    "version": "2.0.5",
+    "version": "2.1.0",
     "main": "app/main.js",
     "description": "ATV Remote",
     "productName": "ATV Remote",
@@ -18,14 +18,18 @@
     "scripts": {
         "start": "electron app",
         "postinstall": "electron-builder install-app-deps",
+        "fullclean": "npx rimraf node_modules app/node_modules dist",
+        "clean": "npx rimraf node_modules app/node_modules",
+        "reset": "npm run clean && npm install --legacy-peer-deps",
         "build": "npx electron-builder -m",
         "docker-build": "./electron_docker.sh 'npm run build:win'",
         "build:win": "npx electron-builder -w",
         "build-arm": "npx electron-builder -m --arm64"
     },
     "devDependencies": {
-        "electron": "^40.1.0",
-        "electron-builder": "^25.1.8"
+        "electron": "^40.2.1",
+        "electron-builder": "^26.7.0",
+        "rimraf": "^6.1.2"
     },
     "dependencies": {
         "@electron/remote": "^2.1.2",

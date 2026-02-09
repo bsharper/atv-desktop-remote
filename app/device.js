@@ -34,7 +34,7 @@ async function scan(timeout = 5000) {
 }
 
 /**
- * Start pairing with a device (Phase 1: AirPlay)
+ * Start pairing with a device (Companion)
  * @param {string} deviceString - Device in format "Name (IP)"
  */
 async function startPair(deviceString) {
@@ -55,44 +55,29 @@ async function startPair(deviceString) {
 
     pairingDevice = device;
 
-    // Start AirPlay pairing (Phase 1)
-    pairingSession = await atvjs.startAirPlayPairing(device);
+    // Start Companion pairing
+    pairingSession = await atvjs.startCompanionPairing(device);
     pairingSession._phase = 1;
     pairingSession._device = device;
 
-    return { phase: 1, protocol: 'AirPlay' };
+    return { phase: 1, protocol: 'Companion' };
 }
 
 /**
- * Complete Phase 1 (AirPlay) pairing with PIN
+ * Backward-compatible alias for legacy two-phase flow.
  * @param {string} pin - 4-digit PIN from Apple TV screen
  */
 async function finishPair1(pin) {
-    if (!pairingSession || pairingSession._phase !== 1) {
-        throw new Error('No AirPlay pairing session active');
-    }
-
-    // Complete AirPlay pairing
-    const airplayCreds = await atvjs.finishAirPlayPairing(pairingSession, pin);
-    const airplayCredsStr = atvjs.serializeCredentials(airplayCreds);
-
-    // Start Companion pairing (Phase 2)
-    const newSession = await atvjs.startCompanionPairing(pairingDevice);
-    newSession._phase = 2;
-    newSession._device = pairingDevice;
-    newSession._airplayCreds = airplayCredsStr;
-    pairingSession = newSession;
-
-    return { phase: 2, protocol: 'Companion' };
+    return finishPair2(pin);
 }
 
 /**
- * Complete Phase 2 (Companion) pairing with PIN
+ * Complete Companion pairing with PIN
  * @param {string} pin - 4-digit PIN from Apple TV screen
  * @returns {Promise<Object>} Complete credentials
  */
 async function finishPair2(pin) {
-    if (!pairingSession || pairingSession._phase !== 2) {
+    if (!pairingSession) {
         throw new Error('No Companion pairing session active');
     }
 
@@ -101,7 +86,7 @@ async function finishPair2(pin) {
 
     // Build complete credentials object
     const credentials = {
-        airplay: pairingSession._airplayCreds,
+        airplay: '',
         companion: atvjs.serializeCredentials(companionCreds),
         device: {
             name: pairingDevice.name,
@@ -119,23 +104,121 @@ async function finishPair2(pin) {
     return credentials;
 }
 
+function normalizeCredentials(credentials) {
+    if (!credentials) {
+        return null;
+    }
+    return {
+        airplay: credentials.airplay || credentials.credentials || '',
+        companion: credentials.companion || credentials.Companion || null
+    };
+}
+
+function buildCredentialsFromSnapshot(snapshot) {
+    return {
+        airplay: snapshot.airplay || '',
+        companion: snapshot.companion,
+        device: {
+            name: snapshot.device.name,
+            address: snapshot.device.address,
+            port: snapshot.device.port,
+            airplayPort: snapshot.device.airplayPort,
+            identifier: snapshot.device.identifier
+        }
+    };
+}
+
+function getCredIdentifier(creds) {
+    if (!creds) {
+        return null;
+    }
+    return (creds.device && creds.device.identifier) || creds.identifier || null;
+}
+
+function getCredCompanion(creds) {
+    if (!creds) {
+        return null;
+    }
+    return creds.companion || creds.Companion || null;
+}
+
+function credentialsMatch(left, right) {
+    if (!left || !right) {
+        return false;
+    }
+
+    const leftIdentifier = getCredIdentifier(left);
+    const rightIdentifier = getCredIdentifier(right);
+    if (leftIdentifier && rightIdentifier) {
+        return leftIdentifier === rightIdentifier;
+    }
+
+    const leftCompanion = getCredCompanion(left);
+    const rightCompanion = getCredCompanion(right);
+    if (leftCompanion && rightCompanion) {
+        return leftCompanion === rightCompanion;
+    }
+
+    return false;
+}
+
+function persistUpdatedCredentialsIfNeeded(providedCredentials, usedCredentials) {
+    if (!usedCredentials) {
+        return;
+    }
+
+    const updatedCredentials = buildCredentialsFromSnapshot(usedCredentials);
+    setActiveCredentials(updatedCredentials);
+
+    const all = getAllCredentials();
+    let didUpdateStored = false;
+
+    Object.keys(all).forEach((name) => {
+        if (credentialsMatch(all[name], providedCredentials)) {
+            all[name] = updatedCredentials;
+            didUpdateStored = true;
+        }
+    });
+
+    if (didUpdateStored) {
+        localStorage.setItem(CREDS_KEY, JSON.stringify(all));
+    }
+}
+
+function shouldMigrateProvidedCredentials(credentials) {
+    if (!credentials) {
+        return false;
+    }
+
+    // Legacy shape from older app versions
+    if (credentials.credentials || credentials.Companion) {
+        return true;
+    }
+
+    // Missing device metadata means we can now enrich persisted creds
+    if (!credentials.device) {
+        return true;
+    }
+
+    return false;
+}
+
 /**
  * Connect to an Apple TV using credentials, with retry logic
  * @param {Object} credentials - Credentials object
  * @param {boolean} isRetry - Whether this is a retry attempt
  */
 async function connect(credentials, isRetry = false) {
-    let creds = credentials;
-    let device = credentials.device;
-
-    // Convert old pyatv credential format to new format if needed
-    if (credentials.credentials && !credentials.airplay) {
-        console.log('Converting old credential format to new format');
-        creds = {
-            airplay: credentials.credentials,
-            companion: credentials.Companion || credentials.companion
-        };
+    const normalized = normalizeCredentials(credentials);
+    if (!normalized) {
+        throw new Error('Invalid credentials format. Please re-pair your Apple TV.');
     }
+
+    const creds = {
+        airplay: normalized.airplay || '',
+        companion: normalized.companion
+    };
+    let device = credentials.device;
 
     // If device info not stored in credentials, we need to scan
     if (!device) {
@@ -152,12 +235,16 @@ async function connect(credentials, isRetry = false) {
     }
 
     // Validate credentials format
-    if (!creds.airplay || !creds.companion) {
+    if (!creds.companion) {
         throw new Error('Invalid credentials format. Please re-pair your Apple TV.');
     }
 
     // Connect using atvjs
     connection = await atvjs.connect(device, creds);
+
+    if (!connection.usedCredentialsMatchProvided || shouldMigrateProvidedCredentials(credentials)) {
+        persistUpdatedCredentialsIfNeeded(credentials, connection.usedCredentials);
+    }
 
     // Set up connection lost handler
     atvjs.onConnectionLost(connection, (error) => {
@@ -358,8 +445,7 @@ function hasValidCredentials() {
     const creds = getActiveCredentials();
     if (!creds) return false;
 
-    // Check for both old format (credentials/identifier) and new format (airplay/companion)
-    return (creds.credentials && creds.identifier) || (creds.airplay && creds.companion);
+    return Boolean(creds.companion || creds.Companion);
 }
 
 module.exports = {

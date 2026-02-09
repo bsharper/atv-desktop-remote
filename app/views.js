@@ -55,10 +55,8 @@ function showView(state, data = {}) {
             showScanningView();
             break;
         case States.PAIRING_1:
-            showPairingView(1, data);
-            break;
         case States.PAIRING_2:
-            showPairingView(2, data);
+            showPairingView(data);
             break;
         case States.CONNECTING:
             showConnectingView(data);
@@ -92,24 +90,17 @@ function showScanningView() {
 
 /**
  * Show pairing view
- * @param {number} phase - 1 or 2
  * @param {Object} data - Contains device info
  */
-function showPairingView(phase, data = {}) {
+function showPairingView(data = {}) {
     $('#addNewElements').show();
     $('#loader').hide();
     $('#pairingElements').show();
     $('#results').hide();
     $('#pairCodeElements').show();
     $('#pairCode').val('').focus();
-
-    if (phase === 1) {
-        $('#pairStepNum').html('1');
-        $('#pairProtocolName').html('AirPlay');
-    } else {
-        $('#pairStepNum').html('2');
-        $('#pairProtocolName').html('Companion');
-    }
+    $('#pairStepNum').html('1');
+    $('#pairProtocolName').html('Companion');
 }
 
 /**
@@ -150,7 +141,7 @@ function createDevicePicker(devices) {
     $('#statusText').hide();
     $('#pairingLoader').html('');
     $('#pairStepNum').html('1');
-    $('#pairProtocolName').html('AirPlay');
+    $('#pairProtocolName').html('Companion');
     $('#pairingElements').show();
 
     const options = devices.map(el => ({ id: el, text: el }));
