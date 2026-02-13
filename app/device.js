@@ -17,15 +17,58 @@ let pairingDevice = null;
 
 // Retry configuration
 const CONNECT_RETRY_DELAY = 1000; // ms between retries
+const SCAN_TIMEOUT_MS = process.platform === 'linux' ? 10000 : 5000;
+const SCAN_ATTEMPTS = process.platform === 'linux' ? 3 : 2;
+
+// Keep recent discovery snapshot to reduce follow-up rescans that can fail intermittently
+let lastDiscoveredDevices = [];
+
+async function discoverDevices(timeout = SCAN_TIMEOUT_MS, attempts = SCAN_ATTEMPTS) {
+    let devices = [];
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            const found = await atvjs.scan(timeout);
+            if (Array.isArray(found) && found.length > 0) {
+                devices = found;
+                break;
+            }
+        } catch (err) {
+            lastError = err;
+        }
+        console.log(`ATV discovery attempt ${attempt}/${attempts} found 0 devices`);
+    }
+
+    if (devices.length === 0 && lastError) {
+        throw lastError;
+    }
+
+    // De-duplicate by address (or identifier fallback)
+    const deduped = new Map();
+    devices.forEach((d) => {
+        const key = d.address || d.identifier || `${d.name}-${d.port || ''}`;
+        if (!deduped.has(key)) {
+            deduped.set(key, d);
+        }
+    });
+
+    const result = Array.from(deduped.values());
+    if (result.length > 0) {
+        lastDiscoveredDevices = result;
+    }
+    console.log(`ATV discovery complete: ${result.length} device(s)`);
+    return result;
+}
 
 /**
  * Scan for Apple TV devices on the network
  * @param {number} timeout - Scan timeout in ms
  * @returns {Promise<string[]>} Array of device strings in format "Name (IP)"
  */
-async function scan(timeout = 5000) {
+async function scan(timeout = SCAN_TIMEOUT_MS) {
     try {
-        const devices = await atvjs.scan(timeout);
+        const devices = await discoverDevices(timeout, SCAN_ATTEMPTS);
         return devices.map(d => `${d.name} (${d.address})`);
     } catch (err) {
         console.error('Scan error:', err);
@@ -47,7 +90,7 @@ async function startPair(deviceString) {
     const ip = match[1];
 
     // Scan to get full device info
-    const devices = await atvjs.scan(5000);
+    const devices = await discoverDevices(SCAN_TIMEOUT_MS, SCAN_ATTEMPTS);
     const device = devices.find(d => d.address === ip);
     if (!device) {
         throw new Error('Device not found');
@@ -222,7 +265,9 @@ async function connect(credentials, isRetry = false) {
 
     // If device info not stored in credentials, we need to scan
     if (!device) {
-        const devices = await atvjs.scan(5000);
+        const devices = lastDiscoveredDevices.length > 0
+            ? lastDiscoveredDevices
+            : await discoverDevices(SCAN_TIMEOUT_MS, SCAN_ATTEMPTS);
         if (credentials.identifier) {
             device = devices.find(d => d.identifier === credentials.identifier);
         }
