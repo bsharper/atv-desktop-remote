@@ -24,13 +24,29 @@ macOS and Windows versions can be downloaded from here: https://github.com/bshar
  
  
  
- ## Running
+## Running
 
  1. Run `npm i --legacy-peer-deps` (other package manages may also work)
  2. Run `npm start`
  3. The application runs in the menubar. Look for a tiny remote icon and click on it. Right-click for more options.
  4. The first time the app runs it will need to pair with an Apple TV. You can pair with more than one.
  5. Press `Cmd+Shift+R` to open the application from anywhere. On Windows its `Win+Shift+R`
+
+## Ubuntu notes
+
+Ubuntu is supported for local development/builds.
+
+1. Install common Electron runtime dependencies:
+   - `sudo apt install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 libasound2t64 libgbm1 libatspi2.0-0`
+2. Install dependencies and run:
+   - `npm i --legacy-peer-deps`
+   - `npm start`
+3. Build Linux artifacts:
+   - `npm run build:linux`
+
+Notes:
+- On GNOME, tray/menu-bar icons may require an AppIndicator extension to be visible.
+- Under Wayland, some global shortcuts can be restricted by desktop/session policies.
 
 ## Building
 
