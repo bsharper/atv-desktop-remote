@@ -21,6 +21,10 @@ var handleVolumeButtonsGlobal = false;
 
 var mb;
 var kbHasFocus;
+const isLinux = process.platform === 'linux';
+const shouldAutoShowOnLinuxStartup = process.platform === 'linux';
+const linuxTrayIconPath = path.join(__dirname, 'images', 'full.png');
+const linuxTaskbarIconPath = path.join(__dirname, 'images', 'full.png');
 
 console._log = console.log;
 console.log = function() {
@@ -94,11 +98,15 @@ function createInputWindow() {
 function createWindow() {
     mb = menubar({
         preloadWindow: preloadWindow,
-        showDockIcon: false,
+        icon: isLinux ? linuxTrayIconPath : undefined,
+        tooltip: 'ATV Remote',
+        showDockIcon: isLinux,
         browserWindow: {
             width: 300,
             height: 500,
             alwaysOnTop: false,
+            skipTaskbar: !isLinux,
+            icon: isLinux ? linuxTaskbarIconPath : undefined,
             webPreferences: {
                 nodeIntegration: true,
                 enableRemoteModule: true,
@@ -110,6 +118,31 @@ function createWindow() {
     mb.on(readyEvent, () => {
         require("@electron/remote/main").enable(mb.window.webContents);
         win = mb.window;
+        if (isLinux) {
+            const appIcon = nativeImage.createFromPath(linuxTaskbarIconPath);
+            if (!appIcon.isEmpty()) {
+                win.setIcon(appIcon);
+            }
+        }
+
+        if (isLinux) {
+            // menubar hides the window on blur by default; disable this on Linux
+            // so the app behaves like a regular desktop window.
+            win.removeAllListeners('blur');
+
+            // Ensure internal menubar hide behavior keeps a taskbar entry and
+            // allows restore by clicking the taskbar icon.
+            const originalHideWindow = mb.hideWindow.bind(mb);
+            mb.hideWindow = () => {
+                if (win && !win.isDestroyed()) {
+                    if (!win.isMinimized()) {
+                        win.minimize();
+                    }
+                    return;
+                }
+                originalHideWindow();
+            };
+        }
        
         var webContents = win.webContents;
         createInputWindow()
@@ -157,7 +190,7 @@ function createWindow() {
 
         ipcMain.handle('hideWindow', (event) => {
             console.log('hiding window');
-            mb.hideWindow();
+            hideWindow();
         });
         ipcMain.handle('isProduction', (event) => {
             return (!process.defaultApp);
@@ -197,6 +230,11 @@ function createWindow() {
             console.log('ready to show')
             // atvjs bridge is always ready - send started event
             win.webContents.send("wsserver_started")
+            if (shouldAutoShowOnLinuxStartup) {
+                setTimeout(() => {
+                    showWindow();
+                }, 150);
+            }
         })
     })
 }
@@ -209,7 +247,14 @@ function showWindow() {
         //console.log(err);
         // this happens in windows, doesn't seem to affect anything though
     }
-    mb.showWindow();
+    if (isLinux && win && !win.isDestroyed()) {
+        if (win.isMinimized()) {
+            win.restore();
+        }
+        win.show();
+    } else {
+        mb.showWindow();
+    }
     setTimeout(() => {
         mb.window.focus();
     }, 200);
@@ -218,7 +263,11 @@ function showWindow() {
 var showWindowThrottle = lodash.throttle(showWindow, 100);
 
 function hideWindow() {
-    mb.hideWindow();
+    if (isLinux && win && !win.isDestroyed()) {
+        win.minimize();
+    } else {
+        mb.hideWindow();
+    }
     try {
         app.hide();
     } catch (err) {
@@ -259,6 +308,11 @@ function handleVolume() {
     })
 }
 function registerHotkeys() {
+    const isWindowShown = () => {
+        if (!mb || !mb.window) return false;
+        return mb.window.isVisible() && !mb.window.isMinimized();
+    };
+
     var hotkeyPath = path.join(process.env['MYPATH'], "hotkey.txt")
     try {
         globalShortcut.unregisterAll();
@@ -278,7 +332,7 @@ function registerHotkeys() {
         var errs = hotkeys.map(hotkey => {
             console.log(`Registering hotkey: ${hotkey}`)
             return globalShortcut.register(hotkey, () => {
-                if (mb.window.isVisible()) {
+                if (isWindowShown()) {
                     hideWindow();
                 } else {
                     showWindow();
@@ -307,14 +361,20 @@ function registerHotkeys() {
         }
     } 
     if (!registered) {
-        globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
-            if (mb.window.isVisible()) {
+        const fallbackHotkeys = process.platform === 'darwin'
+            ? ['Command+Control+R']
+            : ['Super+Shift+R', 'Control+Shift+R'];
+        const fallbackRegistered = globalShortcut.registerAll(fallbackHotkeys, () => {
+            if (isWindowShown()) {
                 hideWindow();
             } else {
                 showWindow();
             }
             win.webContents.send('shortcutWin');
         })
+        if (!fallbackRegistered) {
+            console.log(`Error registering fallback hotkeys: ${fallbackHotkeys}`)
+        }
     }
 }
 
@@ -344,7 +404,9 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mb && mb.window) {
+        showWindow();
+    } else if (BrowserWindow.getAllWindows().length === 0) {
         createWindow()
     }
 })
