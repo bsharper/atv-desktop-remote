@@ -265,48 +265,52 @@ function registerHotkeys() {
     } catch (err) {
         console.log(`Error unregistering hotkeys: ${err}`)
     } 
-    var registered = false;   
-    if (fs.existsSync(hotkeyPath)) {
-        
-        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'}).trim();
-        if (hotkeys.indexOf(",") > -1) {
-            hotkeys = hotkeys.split(',').map(el => { return el.trim() });
+    var registered = false;
+    var hasCustomHotkeyConfig = fs.existsSync(hotkeyPath);
+    if (hasCustomHotkeyConfig) {
+        var hotkeys = fs.readFileSync(hotkeyPath, {encoding: 'utf-8'})
+            .split(',')
+            .map(el => { return el.trim() })
+            .filter(el => { return el !== '' });
+
+        if (hotkeys.length === 0) {
+            console.log('Custom hotkey config is empty, skipping hotkey registration')
+            registered = true;
         } else {
-            hotkeys = [hotkeys];
-        }
-        console.log(`Registering custom hotkeys: ${hotkeys}`)
-        var errs = hotkeys.map(hotkey => {
-            console.log(`Registering hotkey: ${hotkey}`)
-            return globalShortcut.register(hotkey, () => {
-                if (mb.window.isVisible()) {
-                    hideWindow();
-                } else {
-                    showWindow();
-                }
-                win.webContents.send('shortcutWin');
+            console.log(`Registering custom hotkeys: ${hotkeys}`)
+            var errs = hotkeys.map(hotkey => {
+                console.log(`Registering hotkey: ${hotkey}`)
+                return globalShortcut.register(hotkey, () => {
+                    if (mb.window.isVisible()) {
+                        hideWindow();
+                    } else {
+                        showWindow();
+                    }
+                    win.webContents.send('shortcutWin');
+                })
             })
-        })
-        // var ret = globalShortcut.registerAll(hotkeys, () => {
-        //     if (mb.window.isVisible()) {
-        //         hideWindow();
-        //     } else {
-        //         showWindow();
-        //     }
-        //     win.webContents.send('shortcutWin');
-        // })
-        var ret = errs.every(el => { return el });
-        if (!ret) {
-            errs.forEach((err, idx) => {
-                if (!err) {
-                    console.log(`Error registering hotkey: ${hotkeys[idx]}`)
-                }
-            })
-            console.log(`Error registering hotkeys: ${hotkeys}`)
-        } else {
-            registered =true;
+            // var ret = globalShortcut.registerAll(hotkeys, () => {
+            //     if (mb.window.isVisible()) {
+            //         hideWindow();
+            //     } else {
+            //         showWindow();
+            //     }
+            //     win.webContents.send('shortcutWin');
+            // })
+            var ret = errs.every(el => { return el });
+            if (!ret) {
+                errs.forEach((err, idx) => {
+                    if (!err) {
+                        console.log(`Error registering hotkey: ${hotkeys[idx]}`)
+                    }
+                })
+                console.log(`Error registering hotkeys: ${hotkeys}`)
+            } else {
+                registered = true;
+            }
         }
-    } 
-    if (!registered) {
+    }
+    if (!registered && !hasCustomHotkeyConfig) {
         globalShortcut.registerAll(['Super+Shift+R', 'Command+Control+R'], () => {
             if (mb.window.isVisible()) {
                 hideWindow();
