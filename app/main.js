@@ -22,6 +22,51 @@ var handleVolumeButtonsGlobal = false;
 var mb;
 var kbHasFocus;
 
+// === Tray icon blink ===
+const BLINK_COUNT      = 4;    // number of on/off cycles per command
+const BLINK_ON_MS      = 20;   // blend icon duration per cycle
+const BLINK_OFF_MS     = 20;   // normal icon duration per cycle
+const FLASH_CLEANUP_MS = 1000; // ensure normal icon this long after last command
+let trayIconNormal = null;
+let trayIconFlash  = null;
+let blinkTimeouts  = [];
+let flashCleanupTimeout = null;
+
+function flashTrayIcon() {
+    if (!trayIconFlash || !mb?.tray) return;
+    blinkTimeouts.forEach(t => clearTimeout(t));
+    blinkTimeouts = [];
+    clearTimeout(flashCleanupTimeout);
+
+    for (let i = 0; i < BLINK_COUNT; i++) {
+        const t = i * (BLINK_ON_MS + BLINK_OFF_MS);
+        blinkTimeouts.push(
+            setTimeout(() => { if (mb?.tray) mb.tray.setImage(trayIconFlash);  }, t),
+            setTimeout(() => { if (mb?.tray) mb.tray.setImage(trayIconNormal); }, t + BLINK_ON_MS)
+        );
+    }
+
+    flashCleanupTimeout = setTimeout(() => {
+        if (mb?.tray) mb.tray.setImage(trayIconNormal);
+    }, FLASH_CLEANUP_MS);
+}
+
+function initTrayAnimation() {
+    if (process.platform !== 'darwin') return;
+    if (!fs.existsSync(path.join(process.env['MYPATH'], 'animate_icon'))) return;
+
+    trayIconNormal = nativeImage.createFromPath(path.join(__dirname, 'images/icon.png'));
+    trayIconFlash  = nativeImage.createFromPath(path.join(__dirname, 'images/icon-dark.png'));
+    trayIconNormal.setTemplateImage(true);
+    ipcMain.handle('flashTrayIcon', () => flashTrayIcon());
+    console.log('Tray icon animation enabled');
+}
+
+const _win = process.platform === 'win32';
+const PREFIX_MAIN     = _win ? '[ main ]    ' : '⚙️  ';
+const PREFIX_RENDERER = _win ? '[renderer]  ' : '🖥️  ';
+const REPEAT_SEP      = _win ? 'x'            : '×';
+
 let printRendererOutput = true;
 let lastRendererMsg = null;
 let lastRendererCount = 0;
@@ -40,7 +85,7 @@ console._log = console.log;
 console.log = function() {
     flushRendererLine();
     let txt = util.format(...[].slice.call(arguments)) + '\n'
-    process.stdout.write('⚙️  ' + txt);
+    process.stdout.write(PREFIX_MAIN + txt);
     if (win && win.webContents) {
         win.webContents.send('mainLog', txt);
     }
@@ -55,12 +100,12 @@ ipcMain.handle('rendererLog', (event, txt) => {
     if (!printRendererOutput) return;
     if (txt === lastRendererMsg) {
         lastRendererCount++;
-        process.stdout.write(`\r🖥️  ${txt} ×${lastRendererCount}`);
+        process.stdout.write(`\r${PREFIX_RENDERER}${txt} ${REPEAT_SEP}${lastRendererCount}`);
     } else {
         flushRendererLine();
         lastRendererMsg = txt;
         lastRendererCount = 1;
-        process.stdout.write(`🖥️  ${txt}`);
+        process.stdout.write(`${PREFIX_RENDERER}${txt}`);
         rendererLinePending = true;
     }
 });
@@ -144,7 +189,9 @@ function createWindow() {
     mb.on(readyEvent, () => {
         require("@electron/remote/main").enable(mb.window.webContents);
         win = mb.window;
-       
+
+        initTrayAnimation();
+
         var webContents = win.webContents;
         createInputWindow()
        

@@ -53,6 +53,11 @@ let autoKeyboardJustClosed = false;
 const POLL_TICK_MS  = 50;
 const POLL_MIN_MS   = 250;
 const POLL_MAX_MS   = 1000;
+
+// Platform-aware helpers for keyboard log messages
+const _win = process.platform === 'win32';
+const _kb  = (emoji, label) => _win ? `[kb:${label}]` : `⌨️ ${emoji}`;
+const _arr = _win ? '->' : '→';
 let pollIntervalMs  = POLL_MIN_MS;
 let pollInFlight    = false;
 let nextPollTime    = 0;
@@ -142,7 +147,7 @@ function setupIPC() {
     ipcRenderer.on('keyboardWindowClosed', () => {
         autoKeyboardPrimed = false;
         autoKeyboardJustClosed = true;
-        console.log('⌨️ 🔒 keyboard window closed by user → unprimed');
+        console.log(`${_kb('🔒', 'lock')} keyboard window closed by user ${_arr} unprimed`);
     });
 
     ipcRenderer.on('windowShow', () => {
@@ -303,6 +308,7 @@ function checkStaleConnection() {
 async function sendCommand(key, shifted = false) {
     // Update activity timestamp
     appState.updateActivity();
+    ipcRenderer.invoke('flashTrayIcon').catch(() => {});
 
     if (key === 'Pause') key = 'Space';
 
@@ -349,7 +355,7 @@ function startAutoKeyboardPoll(prime = true) {
     pollIntervalMs = POLL_MIN_MS;
     pollInFlight   = false;
     nextPollTime   = 0;
-    console.log(`⌨️ ▶️  auto-keyboard polling started (${autoKeyboardPrimed ? 'primed' : 'unprimed'})`);
+    console.log(`${_kb('▶️ ', 'start')} auto-keyboard polling started (${autoKeyboardPrimed ? 'primed' : 'unprimed'})`);
 
     autoKeyboardInterval = setInterval(async () => {
         if (pollInFlight) return;
@@ -365,7 +371,7 @@ function startAutoKeyboardPoll(prime = true) {
         try {
             visible = await ipcRenderer.invoke('isInputWindowVisible');
         } catch (err) {
-            console.error('⌨️ ❌ auto-keyboard poll error (visibility):', err);
+            console.error(`${_kb('❌', 'err')} auto-keyboard poll error (visibility):`, err);
             pollInFlight = false;
             nextPollTime = pollStart + pollIntervalMs;
             return;
@@ -374,7 +380,7 @@ function startAutoKeyboardPoll(prime = true) {
         // Window just closed → unprime so we don't immediately reopen
         if (autoKeyboardWasVisible && !visible) {
             autoKeyboardPrimed = false;
-            console.log('⌨️ 🔒 keyboard window auto-closed → unprimed');
+            console.log(`${_kb('🔒', 'lock')} keyboard window auto-closed ${_arr} unprimed`);
         }
         autoKeyboardWasVisible = visible;
 
@@ -384,7 +390,7 @@ function startAutoKeyboardPoll(prime = true) {
             try {
                 focused = await device.getKeyboardFocus();
             } catch (err) {
-                console.error('⌨️ ❌ auto-keyboard poll error (focus):', err);
+                console.error(`${_kb('❌', 'err')} auto-keyboard poll error (focus):`, err);
                 pollInFlight = false;
                 nextPollTime = pollStart + pollIntervalMs;
                 return;
@@ -393,19 +399,19 @@ function startAutoKeyboardPoll(prime = true) {
             // Focused→unfocused transition while unprimed → re-prime for next search
             if (!autoKeyboardPrimed && autoKeyboardLastFocused && !focused) {
                 autoKeyboardPrimed = true;
-                console.log('⌨️ 🔑 keyboard unfocused while unprimed → re-primed');
+                console.log(`${_kb('🔑', 'prime')} keyboard unfocused while unprimed ${_arr} re-primed`);
             }
 
             // Log focus state transitions
             if (focused && !autoKeyboardLastFocused) {
-                console.log(`⌨️ 🟢 keyboard focused (primed: ${autoKeyboardPrimed})`);
+                console.log(`${_kb('🟢', 'on')} keyboard focused (primed: ${autoKeyboardPrimed})`);
             } else if (!focused && autoKeyboardLastFocused) {
-                console.log(`⌨️ ⚪️ keyboard unfocused (primed: ${autoKeyboardPrimed})`);
+                console.log(`${_kb('⚪️', 'off')} keyboard unfocused (primed: ${autoKeyboardPrimed})`);
             }
 
             // Open keyboard if primed and keyboard has focus
             if (autoKeyboardPrimed && focused) {
-                console.log('⌨️ 🪄 auto-opening keyboard window');
+                console.log(`${_kb('🪄', 'open')} auto-opening keyboard window`);
                 openKeyboard();
             }
 
@@ -416,7 +422,7 @@ function startAutoKeyboardPoll(prime = true) {
         const elapsed = Date.now() - pollStart;
         if (elapsed >= pollIntervalMs) {
             pollIntervalMs = Math.min(elapsed + POLL_TICK_MS, POLL_MAX_MS);
-            console.log(`⌨️ ⏱️ poll took ${elapsed}ms → interval backed off to ${pollIntervalMs}ms`);
+            console.log(`${_kb('⏱️', 'slow')} poll took ${elapsed}ms ${_arr} interval backed off to ${pollIntervalMs}ms`);
         } else {
             pollIntervalMs = Math.max(pollIntervalMs - POLL_TICK_MS, POLL_MIN_MS);
         }
@@ -432,7 +438,7 @@ function stopAutoKeyboardPoll() {
     if (autoKeyboardInterval) {
         clearInterval(autoKeyboardInterval);
         autoKeyboardInterval = null;
-        console.log('⌨️ 🛑 auto-keyboard polling stopped');
+        console.log(`${_kb('🛑', 'stop')} auto-keyboard polling stopped`);
     }
     autoKeyboardPrimed = false;
     autoKeyboardWasVisible = false;
