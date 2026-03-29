@@ -241,6 +241,7 @@ async function connect(credentials, isRetry = false) {
 
     // Connect using atvjs
     connection = await atvjs.connect(device, creds);
+    window.atvConnection = connection;
 
     if (!connection.usedCredentialsMatchProvided || shouldMigrateProvidedCredentials(credentials)) {
         persistUpdatedCredentialsIfNeeded(credentials, connection.usedCredentials);
@@ -250,6 +251,7 @@ async function connect(credentials, isRetry = false) {
     atvjs.onConnectionLost(connection, (error) => {
         console.log('Connection lost:', error);
         connection = null;
+        window.atvConnection = null;
         events.emit('connection_lost', error);
     });
 
@@ -337,10 +339,18 @@ async function getKeyboardFocus() {
 /**
  * Get current text from focused keyboard field
  */
-async function getText() {
+async function getText(tries = 3) {
     if (!connection) return null;
     try {
-        return await atvjs.getText(connection);
+        let text = await atvjs.getText(connection);
+        if (text === null && tries > 0) {
+            tries--;
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            return await getText(tries);
+        }
+        console.log(`getText text: ${text}, tries: ${tries}`);
+        return text;
     } catch (err) {
         console.error('getText error:', err);
         return null;

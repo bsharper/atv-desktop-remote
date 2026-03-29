@@ -22,14 +22,46 @@ var handleVolumeButtonsGlobal = false;
 var mb;
 var kbHasFocus;
 
+let printRendererOutput = true;
+let lastRendererMsg = null;
+let lastRendererCount = 0;
+let rendererLinePending = false;
+
+function flushRendererLine() {
+    if (rendererLinePending) {
+        process.stdout.write('\n');
+        rendererLinePending = false;
+    }
+}
+
 console._log = console.log;
 console.log = function() {
+    flushRendererLine();
     let txt = util.format(...[].slice.call(arguments)) + '\n'
-    process.stdout.write(txt);
+    process.stdout.write('⚙️  ' + txt);
     if (win && win.webContents) {
         win.webContents.send('mainLog', txt);
     }
 }
+
+ipcMain.handle('printRendererOutput', (event, val) => {
+    printRendererOutput = !!val;
+    console.log(`printRendererOutput set to ${printRendererOutput}`);
+});
+
+ipcMain.handle('rendererLog', (event, txt) => {
+    if (!printRendererOutput) return;
+    if (txt === lastRendererMsg) {
+        lastRendererCount++;
+        process.stdout.write(`\r🖥️  ${txt} ×${lastRendererCount}`);
+    } else {
+        flushRendererLine();
+        lastRendererMsg = txt;
+        lastRendererCount = 1;
+        process.stdout.write(`🖥️  ${txt}`);
+        rendererLinePending = true;
+    }
+});
 
 
 
@@ -121,10 +153,12 @@ function createWindow() {
         })
         win.on('show', () => {
             win.webContents.send('shortcutWin');
+            win.webContents.send('windowShow');
             if (handleVolumeButtonsGlobal) handleVolume();
         })
 
         win.on('hide', () => {
+            win.webContents.send('windowHide');
             if (handleVolumeButtonsGlobal) unhandleVolume();
         })
 
@@ -170,6 +204,7 @@ function createWindow() {
         
         ipcMain.handle('closeInputOpenRemote', (event, arg) => {
             console.log('closeInputOpenRemote');
+            win.webContents.send('keyboardWindowClosed');
             showWindow();
         })
         ipcMain.handle('openInputWindow', (event, arg) => {
@@ -185,6 +220,9 @@ function createWindow() {
             secondWindow.webContents.send('kbfocus-status', arg);
             kbHasFocus = arg;
         })
+        ipcMain.handle('isInputWindowVisible', () => {
+            return secondWindow && secondWindow.isVisible();
+        });
         ipcMain.handle('kbfocus', () => {
             win.webContents.send('kbfocus');
         })
@@ -329,7 +367,7 @@ app.whenReady().then(() => {
         applicationVersion: version,
         version: version,
         credits: "Brian Harper",
-        copyright: "Copyright 2025",
+        copyright: "Copyright 2026",
         website: "https://github.com/bsharper",
         iconPath: "./images/full.png"
     });

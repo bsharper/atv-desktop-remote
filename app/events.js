@@ -45,6 +45,11 @@ const keyDescriptions = {
 };
 
 let qPresses = 0;
+let autoKeyboardInterval = null;
+let autoKeyboardPrimed = false;
+let autoKeyboardWasVisible = false;
+let autoKeyboardLastFocused = false;
+let autoKeyboardJustClosed = false;
 
 /**
  * Initialize events module
@@ -71,6 +76,14 @@ function init(options = {}) {
  * Setup IPC event listeners
  */
 function setupIPC() {
+    // Forward renderer console.log to main process stdout
+    const _util = require('util');
+    const _origConsoleLog = console.log;
+    console.log = function(...args) {
+        _origConsoleLog.apply(console, args);
+        ipcRenderer.invoke('rendererLog', _util.format(...args)).catch(() => {});
+    };
+
     ipcRenderer.on('shortcutWin', () => {
         handleDarkMode();
         views.toggleAltText(true);
@@ -80,8 +93,9 @@ function setupIPC() {
         views.createDevicePicker(devices);
     });
 
+    // Use original console.log to avoid re-forwarding main's own logs back to it
     ipcRenderer.on('mainLog', (event, txt) => {
-        console.log('[ main ] %s', txt.substring(0, txt.length - 1));
+        _origConsoleLog('[ main ] %s', txt.substring(0, txt.length - 1));
     });
 
     ipcRenderer.on('powerResume', () => {
@@ -106,6 +120,21 @@ function setupIPC() {
         device.getKeyboardFocus().then(focused => {
             ipcRenderer.invoke('kbfocus-status', focused);
         });
+    });
+
+    ipcRenderer.on('keyboardWindowClosed', () => {
+        autoKeyboardPrimed = false;
+        autoKeyboardJustClosed = true;
+        console.log('⌨️ 🔒 keyboard window closed by user → unprimed');
+    });
+
+    ipcRenderer.on('windowShow', () => {
+        startAutoKeyboardPoll(!autoKeyboardJustClosed);
+        autoKeyboardJustClosed = false;
+    });
+
+    ipcRenderer.on('windowHide', () => {
+        stopAutoKeyboardPoll();
     });
 
     ipcRenderer.on('input-change', (event, data) => {
@@ -286,6 +315,90 @@ async function sendCommand(key, shifted = false) {
 }
 
 /**
+ * Start polling for Apple TV keyboard focus to auto-open the keyboard window.
+ *
+ * Priming rules:
+ *   - Starts primed when the main window becomes visible.
+ *   - Fires (opens keyboard) when focused + primed + window not already open.
+ *   - Unprimes when the keyboard window closes (user dismissed or auto-close).
+ *   - Re-primes on a focused→unfocused transition while unprimed, so the next
+ *     time the user navigates to a search field it will open again.
+ */
+function startAutoKeyboardPoll(prime = true) {
+    if (autoKeyboardInterval) return;
+    if (prime) autoKeyboardPrimed = true;
+    autoKeyboardWasVisible = false;
+    autoKeyboardLastFocused = false;
+    console.log(`⌨️ ▶️  auto-keyboard polling started (${autoKeyboardPrimed ? 'primed' : 'unprimed'})`);
+    autoKeyboardInterval = setInterval(async () => {
+        if (localStorage.getItem('autoKeyboard') === 'false') return;
+        if (appState.state !== States.CONNECTED) return;
+
+        // Check visibility first — skip the ATV network call if window is already open
+        let visible;
+        try {
+            visible = await ipcRenderer.invoke('isInputWindowVisible');
+        } catch (err) {
+            console.error('⌨️ ❌ auto-keyboard poll error (visibility):', err);
+            return;
+        }
+
+        // Window just closed → unprime so we don't immediately reopen
+        if (autoKeyboardWasVisible && !visible) {
+            autoKeyboardPrimed = false;
+            console.log('⌨️ 🔒 keyboard window auto-closed → unprimed');
+        }
+        autoKeyboardWasVisible = visible;
+
+        // Keyboard window is open — input.html handles focus polling, nothing to do
+        if (visible) return;
+
+        let focused;
+        try {
+            focused = await device.getKeyboardFocus();
+        } catch (err) {
+            console.error('⌨️ ❌ auto-keyboard poll error (focus):', err);
+            return;
+        }
+
+        // Focused→unfocused transition while unprimed → re-prime for next search
+        if (!autoKeyboardPrimed && autoKeyboardLastFocused && !focused) {
+            autoKeyboardPrimed = true;
+            console.log('⌨️ 🔑 keyboard unfocused while unprimed → re-primed');
+        }
+
+        // Log focus state transitions
+        if (focused && !autoKeyboardLastFocused) {
+            console.log(`⌨️ 🟢 keyboard focused (primed: ${autoKeyboardPrimed})`);
+        } else if (!focused && autoKeyboardLastFocused) {
+            console.log(`⌨️ ⚪️ keyboard unfocused (primed: ${autoKeyboardPrimed})`);
+        }
+
+        // Open keyboard if primed and keyboard has focus
+        if (autoKeyboardPrimed && focused) {
+            console.log('⌨️ 🪄 auto-opening keyboard window');
+            openKeyboard();
+        }
+
+        autoKeyboardLastFocused = focused;
+    }, 250);
+}
+
+/**
+ * Stop auto-keyboard polling and reset priming state.
+ */
+function stopAutoKeyboardPoll() {
+    if (autoKeyboardInterval) {
+        clearInterval(autoKeyboardInterval);
+        autoKeyboardInterval = null;
+        console.log('⌨️ 🛑 auto-keyboard polling stopped');
+    }
+    autoKeyboardPrimed = false;
+    autoKeyboardWasVisible = false;
+    autoKeyboardLastFocused = false;
+}
+
+/**
  * Open the keyboard input window
  */
 function openKeyboard() {
@@ -421,9 +534,11 @@ function setupContextMenu() {
     ]);
 
     const topChecked = JSON.parse(localStorage.getItem('alwaysOnTopChecked') || 'false');
+    const autoKeyboardChecked = localStorage.getItem('autoKeyboard') !== 'false';
 
     const contextMenu = Menu.buildFromTemplate([
         { type: 'checkbox', label: 'Always on-top', click: toggleAlwaysOnTop, checked: topChecked },
+        { type: 'checkbox', label: 'Automatically open/close keyboard', click: toggleAutoKeyboard, checked: autoKeyboardChecked },
         { type: 'separator' },
         { role: 'about', label: 'About' },
         { type: 'separator' },
@@ -452,6 +567,10 @@ function setUIMode(event) {
 function toggleAlwaysOnTop(event) {
     localStorage.setItem('alwaysOnTopChecked', String(event.checked));
     ipcRenderer.invoke('alwaysOnTop', String(event.checked));
+}
+
+function toggleAutoKeyboard(event) {
+    localStorage.setItem('autoKeyboard', String(event.checked));
 }
 
 async function clearSavedData() {
