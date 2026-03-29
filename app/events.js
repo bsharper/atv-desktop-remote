@@ -57,7 +57,7 @@ const POLL_MAX_MS   = 1000;
 // Platform-aware helpers for keyboard log messages
 const _win = process.platform === 'win32';
 const _kb  = (emoji, label) => _win ? `[kb:${label}]` : `⌨️ ${emoji}`;
-const _arr = _win ? '->' : '→';
+const _arr = process.platform === 'darwin' ? '→' : '->';
 let pollIntervalMs  = POLL_MIN_MS;
 let pollInFlight    = false;
 let nextPollTime    = 0;

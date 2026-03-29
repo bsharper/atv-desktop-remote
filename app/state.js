@@ -92,7 +92,7 @@ class AppState extends EventEmitter {
     transition(newState, data = {}) {
         const allowed = validTransitions[this._state];
         if (!allowed || !allowed.includes(newState)) {
-            console.warn(`Invalid state transition: ${this._state} → ${newState}`);
+            console.warn(`Invalid state transition: ${this._state} ${process.platform === 'darwin' ? '→' : '->'} ${newState}`);
             return false;
         }
 
@@ -129,7 +129,7 @@ class AppState extends EventEmitter {
                 break;
         }
 
-        console.log(`State: ${oldState} → ${newState}`, data);
+        console.log(`State: ${oldState} ${process.platform === 'darwin' ? '→' : '->'} ${newState}`, data);
         this.emit('change', { oldState, newState, data });
         this.emit(newState, data);
 
