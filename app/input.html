@@ -116,7 +116,7 @@
         });
         
         document.addEventListener('keydown', function(event) {
-            console.log(`key: ${event.key}, windowOpened: ${windowOpened}`)
+            //console.log(`key: ${event.key}, windowOpened: ${windowOpened}`)
             if (event.key === 'Escape' || event.key === 'Enter') {
                 ipcRenderer.invoke('closeInputOpenRemote');
                 windowOpened = false;

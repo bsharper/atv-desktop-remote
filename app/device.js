@@ -343,7 +343,8 @@ async function getText(tries = 3) {
     if (!connection) return null;
     try {
         let text = await atvjs.getText(connection);
-        if (text === null && tries > 0) {
+        text = text.trim();
+        if ((text === null || text === '') && tries > 0) {
             tries--;
             await new Promise(resolve => setTimeout(resolve, 100));
             

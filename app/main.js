@@ -31,6 +31,8 @@ function flushRendererLine() {
     if (rendererLinePending) {
         process.stdout.write('\n');
         rendererLinePending = false;
+        lastRendererMsg = null;
+        lastRendererCount = 0;
     }
 }
 

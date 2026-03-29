@@ -50,12 +50,26 @@ let autoKeyboardPrimed = false;
 let autoKeyboardWasVisible = false;
 let autoKeyboardLastFocused = false;
 let autoKeyboardJustClosed = false;
+const POLL_TICK_MS  = 50;
+const POLL_MIN_MS   = 250;
+const POLL_MAX_MS   = 1000;
+let pollIntervalMs  = POLL_MIN_MS;
+let pollInFlight    = false;
+let nextPollTime    = 0;
+
+let _initialized = false;
 
 /**
  * Initialize events module
  * @param {Object} options - Electron modules
  */
 function init(options = {}) {
+    if (_initialized) {
+        console.warn('events.init() called more than once — ignoring');
+        return;
+    }
+    _initialized = true;
+
     ipcRenderer = options.ipcRenderer || require('electron').ipcRenderer;
     remote = options.remote;
     nativeTheme = options.nativeTheme;
@@ -76,13 +90,16 @@ function init(options = {}) {
  * Setup IPC event listeners
  */
 function setupIPC() {
-    // Forward renderer console.log to main process stdout
-    const _util = require('util');
-    const _origConsoleLog = console.log;
-    console.log = function(...args) {
-        _origConsoleLog.apply(console, args);
-        ipcRenderer.invoke('rendererLog', _util.format(...args)).catch(() => {});
-    };
+    // Forward renderer console.log to main process stdout (guard against double-wrapping)
+    if (!console._rendererForwardInstalled) {
+        console._rendererForwardInstalled = true;
+        const _util = require('util');
+        const _origConsoleLog = console.log;
+        console.log = function(...args) {
+            _origConsoleLog.apply(console, args);
+            ipcRenderer.invoke('rendererLog', _util.format(...args)).catch(() => {});
+        };
+    }
 
     ipcRenderer.on('shortcutWin', () => {
         handleDarkMode();
@@ -329,10 +346,19 @@ function startAutoKeyboardPoll(prime = true) {
     if (prime) autoKeyboardPrimed = true;
     autoKeyboardWasVisible = false;
     autoKeyboardLastFocused = false;
+    pollIntervalMs = POLL_MIN_MS;
+    pollInFlight   = false;
+    nextPollTime   = 0;
     console.log(`⌨️ ▶️  auto-keyboard polling started (${autoKeyboardPrimed ? 'primed' : 'unprimed'})`);
+
     autoKeyboardInterval = setInterval(async () => {
+        if (pollInFlight) return;
+        if (Date.now() < nextPollTime) return;
         if (localStorage.getItem('autoKeyboard') === 'false') return;
         if (appState.state !== States.CONNECTED) return;
+
+        pollInFlight = true;
+        const pollStart = Date.now();
 
         // Check visibility first — skip the ATV network call if window is already open
         let visible;
@@ -340,6 +366,8 @@ function startAutoKeyboardPoll(prime = true) {
             visible = await ipcRenderer.invoke('isInputWindowVisible');
         } catch (err) {
             console.error('⌨️ ❌ auto-keyboard poll error (visibility):', err);
+            pollInFlight = false;
+            nextPollTime = pollStart + pollIntervalMs;
             return;
         }
 
@@ -350,38 +378,51 @@ function startAutoKeyboardPoll(prime = true) {
         }
         autoKeyboardWasVisible = visible;
 
-        // Keyboard window is open — input.html handles focus polling, nothing to do
-        if (visible) return;
+        if (!visible) {
+            // Keyboard window is closed — query the ATV for focus state
+            let focused;
+            try {
+                focused = await device.getKeyboardFocus();
+            } catch (err) {
+                console.error('⌨️ ❌ auto-keyboard poll error (focus):', err);
+                pollInFlight = false;
+                nextPollTime = pollStart + pollIntervalMs;
+                return;
+            }
 
-        let focused;
-        try {
-            focused = await device.getKeyboardFocus();
-        } catch (err) {
-            console.error('⌨️ ❌ auto-keyboard poll error (focus):', err);
-            return;
+            // Focused→unfocused transition while unprimed → re-prime for next search
+            if (!autoKeyboardPrimed && autoKeyboardLastFocused && !focused) {
+                autoKeyboardPrimed = true;
+                console.log('⌨️ 🔑 keyboard unfocused while unprimed → re-primed');
+            }
+
+            // Log focus state transitions
+            if (focused && !autoKeyboardLastFocused) {
+                console.log(`⌨️ 🟢 keyboard focused (primed: ${autoKeyboardPrimed})`);
+            } else if (!focused && autoKeyboardLastFocused) {
+                console.log(`⌨️ ⚪️ keyboard unfocused (primed: ${autoKeyboardPrimed})`);
+            }
+
+            // Open keyboard if primed and keyboard has focus
+            if (autoKeyboardPrimed && focused) {
+                console.log('⌨️ 🪄 auto-opening keyboard window');
+                openKeyboard();
+            }
+
+            autoKeyboardLastFocused = focused;
         }
 
-        // Focused→unfocused transition while unprimed → re-prime for next search
-        if (!autoKeyboardPrimed && autoKeyboardLastFocused && !focused) {
-            autoKeyboardPrimed = true;
-            console.log('⌨️ 🔑 keyboard unfocused while unprimed → re-primed');
+        // Adapt polling interval based on how long this poll took
+        const elapsed = Date.now() - pollStart;
+        if (elapsed >= pollIntervalMs) {
+            pollIntervalMs = Math.min(elapsed + POLL_TICK_MS, POLL_MAX_MS);
+            console.log(`⌨️ ⏱️ poll took ${elapsed}ms → interval backed off to ${pollIntervalMs}ms`);
+        } else {
+            pollIntervalMs = Math.max(pollIntervalMs - POLL_TICK_MS, POLL_MIN_MS);
         }
-
-        // Log focus state transitions
-        if (focused && !autoKeyboardLastFocused) {
-            console.log(`⌨️ 🟢 keyboard focused (primed: ${autoKeyboardPrimed})`);
-        } else if (!focused && autoKeyboardLastFocused) {
-            console.log(`⌨️ ⚪️ keyboard unfocused (primed: ${autoKeyboardPrimed})`);
-        }
-
-        // Open keyboard if primed and keyboard has focus
-        if (autoKeyboardPrimed && focused) {
-            console.log('⌨️ 🪄 auto-opening keyboard window');
-            openKeyboard();
-        }
-
-        autoKeyboardLastFocused = focused;
-    }, 250);
+        nextPollTime = pollStart + pollIntervalMs;
+        pollInFlight = false;
+    }, POLL_TICK_MS);
 }
 
 /**
@@ -396,6 +437,9 @@ function stopAutoKeyboardPoll() {
     autoKeyboardPrimed = false;
     autoKeyboardWasVisible = false;
     autoKeyboardLastFocused = false;
+    pollIntervalMs = POLL_MIN_MS;
+    pollInFlight   = false;
+    nextPollTime   = 0;
 }
 
 /**

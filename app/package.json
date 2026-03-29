@@ -16,6 +16,6 @@
         "bluebird": "^3.7.2",
         "electron-positioner": "^4.1.0",
         "jquery": "^3.5.1",
-        "menubar": "^9.0.2"
+        "menubar": "^9.5.2"
     }
 }
