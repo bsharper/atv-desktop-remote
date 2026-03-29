@@ -51,6 +51,9 @@ function flashTrayIcon() {
     }, FLASH_CLEANUP_MS);
 }
 
+// Always register the handler — flashTrayIcon() is a no-op when inactive
+ipcMain.handle('flashTrayIcon', () => flashTrayIcon());
+
 function initTrayAnimation() {
     if (process.platform !== 'darwin') return;
     if (!fs.existsSync(path.join(process.env['MYPATH'], 'animate_icon'))) return;
@@ -58,7 +61,6 @@ function initTrayAnimation() {
     trayIconNormal = nativeImage.createFromPath(path.join(__dirname, 'images/icon.png'));
     trayIconFlash  = nativeImage.createFromPath(path.join(__dirname, 'images/icon-dark.png'));
     trayIconNormal.setTemplateImage(true);
-    ipcMain.handle('flashTrayIcon', () => flashTrayIcon());
     console.log('Tray icon animation enabled');
 }
 
@@ -435,3 +437,32 @@ app.on('activate', () => {
         createWindow()
     }
 })
+
+// ── Graceful shutdown ────────────────────────────────────────────────────────
+
+function gracefulShutdown(signal) {
+    console.log(`Received ${signal}, shutting down`);
+    try {
+        app.quit();
+    } catch (_) {
+        process.exit(0);
+    }
+}
+
+// SIGTERM: sent by OS on shutdown / service managers on all platforms
+// SIGHUP:  terminal disconnect / session end on macOS/Linux
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+if (process.platform !== 'win32') {
+    process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+}
+
+// Log uncaught exceptions before the process dies so the error is visible
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    gracefulShutdown('uncaughtException');
+});
+
+// Log unhandled promise rejections — don't exit, they're usually non-fatal
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason);
+});
