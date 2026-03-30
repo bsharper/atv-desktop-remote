@@ -139,12 +139,7 @@
 
         function saveHotkey() {
             var hotkeys = $('#all_hotkeys').val() || [];
-            if (hotkeys.length === 0) {
-                fs.unlinkSync(hotkeyPath);
-            } else {
-                
-                fs.writeFileSync(hotkeyPath, hotkeys.join(','));
-            }
+            fs.writeFileSync(hotkeyPath, hotkeys.join(','));
             closeWindow();
         }
 
