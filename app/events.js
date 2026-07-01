@@ -629,7 +629,7 @@ async function clearSavedData() {
         buttons: ['Cancel', 'Clear'],
         defaultId: 0,
         message: 'Clear all saved data?',
-        detail: 'This will remove all paired devices and preferences. You will need to pair your Apple TV again.',
+        detail: 'This will remove all paired devices and preferences. You will need to pair your devices again.',
     });
     if (result.response === 1) {
         localStorage.clear();

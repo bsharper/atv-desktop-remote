@@ -54,7 +54,7 @@ async function showHelpMessage() {
     await dialog.showMessageBox({
         type: 'info',
         title: 'Howdy!',
-        message: 'Thanks for using this program!\nAfter pairing with an Apple TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\nTo open this program, press Command+Control+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.'
+        message: 'Thanks for using this program!\nAfter pairing with an Apple TV or Fire TV (one time process), you will see the remote layout.\n\nEvery button is mapped to the keyboard, press and hold the "Option" key to see which key does what.\n\nTo open this program, press Command+Control+R (pressing this again will close it). Also right-clicking the icon in the menu will show additional options.'
     });
 }
 

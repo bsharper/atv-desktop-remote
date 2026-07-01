@@ -100,7 +100,7 @@ function showPairingView(data = {}) {
     $('#pairCodeElements').show();
     $('#pairCode').val('').focus();
     $('#pairStepNum').html('1');
-    $('#pairProtocolName').html('Companion');
+    $('#pairProtocolName').html(device.getPairingProtocolName(data.device));
 }
 
 /**
@@ -112,9 +112,9 @@ function showConnectingView(data = {}) {
 
     const retries = appState.connectRetries;
     if (retries > 0) {
-        setStatus(`Connecting to ATV... (attempt ${retries + 1})`);
+        setStatus(`Connecting to device... (attempt ${retries + 1})`);
     } else {
-        setStatus('Connecting to ATV...');
+        setStatus('Connecting to device...');
     }
 }
 

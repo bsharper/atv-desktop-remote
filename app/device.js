@@ -1,12 +1,13 @@
 /**
  * Device Module
- * Handles all Apple TV device operations: scanning, pairing, connecting, commands.
- * Wraps atvjs library and manages credential storage.
+ * Handles device operations: scanning, pairing, connecting, commands.
+ * Routes Apple TV work to atvjs, Fire TV work to firetv.js, and manages credential storage.
  */
 
 const atvjs = require('@bharper/atv-js');
 const EventEmitter = require('events');
 const { States, appState } = require('./state');
+const firetv = require('./firetv');
 
 const events = new EventEmitter();
 
@@ -14,19 +15,34 @@ const events = new EventEmitter();
 let connection = null;
 let pairingSession = null;
 let pairingDevice = null;
+let pairingBackend = 'appletv';
+let activeBackend = 'appletv';
 
 // Retry configuration
 const CONNECT_RETRY_DELAY = 1000; // ms between retries
 
 /**
- * Scan for Apple TV devices on the network
+ * Scan for supported devices on the network
  * @param {number} timeout - Scan timeout in ms
  * @returns {Promise<string[]>} Array of device strings in format "Name (IP)"
  */
 async function scan(timeout = 5000) {
     try {
-        const devices = await atvjs.scan(timeout);
-        return devices.map(d => `${d.name} (${d.address})`);
+        const [appleDevices, fireDevices] = await Promise.all([
+            atvjs.scan(timeout).catch((err) => {
+                console.error('Apple TV scan error:', err);
+                return [];
+            }),
+            firetv.scan(timeout).catch((err) => {
+                console.error('Fire TV scan error:', err);
+                return [];
+            })
+        ]);
+
+        return [
+            ...appleDevices.map(d => `Apple TV: ${d.name} (${d.address})`),
+            ...fireDevices.map(d => firetv.getDeviceString(d))
+        ];
     } catch (err) {
         console.error('Scan error:', err);
         return [];
@@ -34,10 +50,17 @@ async function scan(timeout = 5000) {
 }
 
 /**
- * Start pairing with a device (Companion)
+ * Start pairing with a device
  * @param {string} deviceString - Device in format "Name (IP)"
  */
 async function startPair(deviceString) {
+    if (firetv.isDeviceString(deviceString)) {
+        pairingBackend = 'firetv';
+        return firetv.startPair(deviceString);
+    }
+
+    pairingBackend = 'appletv';
+
     // Parse device string to get IP - match the LAST parenthesized value
     // Handles device names with parentheses like "Upstairs Bedroom (3) (192.168.1.223)"
     const match = deviceString.match(/\(([^)]+)\)$/);
@@ -77,6 +100,12 @@ async function finishPair1(pin) {
  * @returns {Promise<Object>} Complete credentials
  */
 async function finishPair2(pin) {
+    if (pairingBackend === 'firetv') {
+        const credentials = await firetv.finishPair(pin);
+        pairingBackend = 'appletv';
+        return credentials;
+    }
+
     if (!pairingSession) {
         throw new Error('No Companion pairing session active');
     }
@@ -133,6 +162,10 @@ function getCredIdentifier(creds) {
         return null;
     }
     return (creds.device && creds.device.identifier) || creds.identifier || null;
+}
+
+function isFireTvCredentials(credentials) {
+    return Boolean(credentials && credentials.type === 'firetv');
 }
 
 function getCredCompanion(creds) {
@@ -204,11 +237,20 @@ function shouldMigrateProvidedCredentials(credentials) {
 }
 
 /**
- * Connect to an Apple TV using credentials, with retry logic
+ * Connect to a device using credentials, with retry logic
  * @param {Object} credentials - Credentials object
  * @param {boolean} isRetry - Whether this is a retry attempt
  */
 async function connect(credentials, isRetry = false) {
+    if (isFireTvCredentials(credentials)) {
+        await firetv.connect(credentials);
+        activeBackend = 'firetv';
+        events.emit('connected');
+        return true;
+    }
+
+    activeBackend = 'appletv';
+
     const normalized = normalizeCredentials(credentials);
     if (!normalized) {
         throw new Error('Invalid credentials format. Please re-pair your Apple TV.');
@@ -287,19 +329,24 @@ async function connectWithRetry(credentials) {
 }
 
 /**
- * Disconnect from the Apple TV
+ * Disconnect from the active device
  */
 function disconnect() {
     if (connection) {
         atvjs.disconnect(connection);
         connection = null;
     }
+    firetv.disconnect();
+    activeBackend = 'appletv';
 }
 
 /**
  * Check if connected
  */
 function isConnected() {
+    if (activeBackend === 'firetv') {
+        return firetv.isConnected();
+    }
     return connection && atvjs.isConnected(connection);
 }
 
@@ -309,6 +356,10 @@ function isConnected() {
  * @param {string} action - Optional action type ('Hold', 'DoubleTap')
  */
 async function sendKey(key, action) {
+    if (activeBackend === 'firetv') {
+        return firetv.sendKey(key, action);
+    }
+
     if (!connection) {
         throw new Error('Not connected');
     }
@@ -324,9 +375,10 @@ async function sendKey(key, action) {
 }
 
 /**
- * Check if keyboard is focused on Apple TV
+ * Check if keyboard is focused on the active device
  */
 async function getKeyboardFocus() {
+    if (activeBackend === 'firetv') return false;
     if (!connection) return false;
     try {
         return await atvjs.getKeyboardFocusState(connection);
@@ -340,6 +392,7 @@ async function getKeyboardFocus() {
  * Get current text from focused keyboard field
  */
 async function getText(tries = 3) {
+    if (activeBackend === 'firetv') return null;
     if (!connection) return null;
     try {
         let text = await atvjs.getText(connection);
@@ -362,6 +415,7 @@ async function getText(tries = 3) {
  * Set text in focused keyboard field
  */
 async function setText(text) {
+    if (activeBackend === 'firetv') return;
     if (!connection) return;
     try {
         await atvjs.setText(connection, text);
@@ -456,7 +510,11 @@ function hasValidCredentials() {
     const creds = getActiveCredentials();
     if (!creds) return false;
 
-    return Boolean(creds.companion || creds.Companion);
+    return Boolean(creds.companion || creds.Companion || (creds.type === 'firetv' && creds.token));
+}
+
+function getPairingProtocolName(deviceString) {
+    return firetv.isDeviceString(deviceString) ? 'Fire TV' : 'Companion';
 }
 
 module.exports = {
@@ -488,6 +546,7 @@ module.exports = {
     setActiveCredentials,
     getSavedDeviceNames,
     hasValidCredentials,
+    getPairingProtocolName,
 
     // Events
     events
